@@ -14,9 +14,11 @@
 
 	<!--运行joint_state_publisher节点，发布机器人关节状态-->
 	<!--<node name = "robot_state_publisher" pkg = "robot_state_publisher" type = "state_publisher">-->
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
 	<node name= "robot_state_publisher" pkg= "robot_state_publisher" type= "robot_state_publisher">
 		<remap from="/joint_states" to="/racebot/joint_states"/>
 	</node>
+  <!-- <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" /> -->
 
   <!-- servo node -->
   <node pkg="racebot_control" type="servo_commands.py" name="servo_commands" output="screen"/>

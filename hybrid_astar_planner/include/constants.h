@@ -9,7 +9,7 @@ namespace hybrid_astar_planner {
 namespace Constants {
 /// A flag to toggle reversing (true = on; false = off)
 /// 设置是否允许车辆后退的标志位 true表示可以倒退；false表示只能前进不能倒退   
-static const bool reverse = false;  
+static const bool reverse = true;  
 
 /// [#] --- Limits the maximum search depth of the algorithm, possibly terminating without the solution
 /// 最大迭代次数

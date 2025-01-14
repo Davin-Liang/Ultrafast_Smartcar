@@ -74,15 +74,16 @@ class Nodelet : public nodelet::Nodelet
     double angle_diff = vel_angle - state_.z();
     int forward_dir = path_direction[path_seg_index];
 
-    angle_diff = Mod2Pi(angle_diff);
+    angle_diff = Mod2Pi(vel_angle - state_.z());
     // 如果此时的速度方向是倒车，但是路径是正向，则速度取负数
-    if(forward_dir == 1 && abs(angle_diff) > 0.75 * M_PI)  state_(3) *= -1;
+    if (forward_dir == 1 && abs(angle_diff) > 0.75 * M_PI)  state_(3) *= -1;
     // //如果此时是倒车路径，那么需要取负数
-    if (forward_dir == 0)                                  state_(3) *= -1;
+    if (forward_dir == 0)                                   state_(3) *= -1;
     // // 如果此时的速度方向是正车，但是路径是倒车，则速度取负数
-    if(forward_dir == 0 && abs(angle_diff) < 0.25 * M_PI)  state_(3) *= -1;
+    if (forward_dir == 0 && abs(angle_diff) < 0.25 * M_PI)  state_(3) *= -1;
 
-      if (mpcPtr_->solveQP(state_) == 11) // 11表示到达终点了
+      int solve_result = mpcPtr_->solveQP(state_);
+      if (solve_result == 11) // 11表示到达终点了
       {
         if (path_seg_index < (path_segs.size()-1))
         {
@@ -121,6 +122,11 @@ class Nodelet : public nodelet::Nodelet
           return;
         }
       }
+      else if (solve_result != 1)
+      {
+        std::cout << "求解失败，停车！" << std::endl;
+        arrive_goal = true;
+      }
       ros::Time t2 = ros::Time::now();
       double solve_time = (t2 - t1).toSec();
       std::cout << "solve qp costs: " << 1e3 * solve_time << "ms" << std::endl;
@@ -133,7 +139,11 @@ class Nodelet : public nodelet::Nodelet
       std::cout << "---------------------" << std::endl;
 
       geometry_msgs::Twist msg;
-      msg.linear.x = state_(3) + u(0) * 0.1;
+      if (path_direction[path_seg_index] > 0)
+        msg.linear.x = state_(3) + u(0) * 0.1;
+      else
+        msg.linear.x = -abs(state_(3) + u(0) * 0.1);
+
       msg.angular.z = u(1);
       cmd_pub_.publish(msg);     
       mpcPtr_->visualization();
@@ -171,7 +181,7 @@ class Nodelet : public nodelet::Nodelet
     std::vector<Eigen::Vector2d> path_seg; // 用于临时存储当前路径段的点
     int initDirection = pathMsg->poses[0].pose.position.z; // 从路径的第一个点提取初始方向（z 坐标）
     path_direction.emplace_back(initDirection);
-    // path_direction.emplace_back(1);
+
     for (int i = 0; i < pathMsg->poses.size(); ++i) // 遍历每一个路径点
     {
       if (pathMsg->poses[i].pose.position.z == path_direction.back()) // 如果当前点的方向（z 坐标）与 path_direction.back()（当前方向）相同
@@ -191,17 +201,6 @@ class Nodelet : public nodelet::Nodelet
     }
     //-----打印信息--------------
     std::cout << "一共生成 " << path_segs.size() << " 段轨迹, " << path_direction.size() << " 个方向" <<  std::endl;
-    // for(int i = 0; i < path_segs.size(); ++i)
-    // {
-    //   std::cout << "第" << i << "段：" <<  std::endl;
-    //   for(int j = 0; j < path_segs[i].size(); ++j)
-    //   {
-    //     /* 0 代表后退，1 代表前进 */
-    //     std::cout << path_segs[i][j].transpose() << ", " << path_direction[i] << std::endl;
-    //   }
-    // }
-
-    // mpcPtr_->setPath(pathMsg);
 
     init_path_all = true;
     init_path_seg = false;

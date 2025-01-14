@@ -509,6 +509,7 @@ class MpcCar {
     if (ret != 1) 
     {
       ROS_ERROR("fail to solve QP!");
+      std::cout << "ret = " << ret << std::endl;
       return ret;
     }
     //将很长的向量映射为矩阵

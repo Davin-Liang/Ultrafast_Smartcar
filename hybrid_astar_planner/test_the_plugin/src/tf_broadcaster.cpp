@@ -77,7 +77,7 @@ int main(int argc, char** argv) {
       tf::StampedTransform(
         tf::Transform(tf::Quaternion(0, 0, 0, 1), tf::Vector3(0, 0, 0)),
         ros::Time::now(), "map", "path"));
-    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "base_link"));
+    // br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "base_link"));
     ros::spinOnce();
     r.sleep();
   }

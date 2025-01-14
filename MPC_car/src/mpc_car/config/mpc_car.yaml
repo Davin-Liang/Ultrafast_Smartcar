@@ -10,7 +10,7 @@ track_points_y: [0.5 , 0.5, 0.5 , 0.35, 0,-0.35, -0.5,-0.5, -0.5, -0.35, 0, 0.35
 
 
 
-desired_v: 0.4 # desired velocity
+desired_v: 0.3 # desired velocity
 
 ll: 0.22 # ll of the car//，车的长度
 dt: 0.1 # 

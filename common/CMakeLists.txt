@@ -57,6 +57,7 @@ target_link_libraries(
     COMMON_LIB
     ${catkin_LIBRARIES}
     glog
+    
     # osqp::osqp
 )
 target_include_directories(COMMON_LIB PUBLIC include ${catkin_INCLUDE_DIRS}  ${EIGEN3_INCLUDE_DIR} )

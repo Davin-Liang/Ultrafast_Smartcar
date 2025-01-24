@@ -12,11 +12,14 @@ find_package(catkin REQUIRED COMPONENTS
   nodelet
   car_msgs
   racebot_control
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
 )
 
 catkin_package(
   INCLUDE_DIRS include ${EIGEN3_INCLUDE_DIR}
-  CATKIN_DEPENDS roscpp nodelet car_msgs
+  CATKIN_DEPENDS roscpp nodelet car_msgs tf2 tf2_ros tf2_geometry_msgs
   DEPENDS EIGEN3
 )
 

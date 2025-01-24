@@ -13,7 +13,20 @@
         <!-- <param name="base_local_planner" value="teb_local_planner/TebLocalPlannerROS" /> -->
         <param name="use_hybrid_astar" value="true" />
     </node>
+
+    <!-- 纯激光定位 -->
+    <!-- <node pkg="jie_ware" type="lidar_loc" name="lidar_loc" >
+        <param name="base_frame" value="base_footprint" />
+        <param name="odom_frame" value="odom" />
+        <param name="laser_frame" value="lidar" />
+        <param name="laser_topic" value="scan" />
+    </node>
+    <node pkg="jie_ware" type="costmap_cleaner" name="costmap_cleaner" /> -->
+
+    <!-- AMCL 定位 -->
+    <include file="$(find racebot_gazebo)/launch/amcl.launch" />
+
     <node name="tf_broadcaster" pkg="hybrid_astar_planner" type="tf_test_broadcaster" output="screen" />
-    <node name="map_server" pkg="map_server" type="map_server" args="$(find hybrid_astar_planner)/test_the_plugin/maps/mymap2077.yaml" />
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find hybrid_astar_planner)/test_the_plugin/maps/room_mini.yaml" />
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hybrid_astar_planner)/test_the_plugin/launch/config.rviz" />
 </launch>

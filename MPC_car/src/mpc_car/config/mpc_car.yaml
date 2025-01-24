@@ -10,7 +10,7 @@ track_points_y: [0.5 , 0.5, 0.5 , 0.35, 0,-0.35, -0.5,-0.5, -0.5, -0.35, 0, 0.35
 
 
 
-desired_v: 0.3 # desired velocity
+desired_v: 0.45 # desired velocity
 
 ll: 0.22 # ll of the car//，车的长度
 dt: 0.1 # 
@@ -20,8 +20,8 @@ rhoN: 2.0 #终端状态的权重？
 
 # lower and upper bound
 v_max: 0.5
-a_max: 0.5
-delta_max: 1.3
+a_max: 0.3
+delta_max: 1.0
 ddelta_max: 1.0
 
 # ctrl delay

@@ -208,7 +208,7 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
       continue; // 防止参考点数量太少
     }
 
-    double ts = distance > 0.1 ? (Constants::ctrl_pt_dist / Constants::MAX_Vel * 1.2) 
+    double ts = distance > 0.1 ? (Constants::ctrl_pt_dist / Constants::MAX_Vel * 1.5) 
                                : (Constants::ctrl_pt_dist / Constants::MAX_Vel * 5);
 
     /* 初始化起点和终点的速度和加速度约束 */

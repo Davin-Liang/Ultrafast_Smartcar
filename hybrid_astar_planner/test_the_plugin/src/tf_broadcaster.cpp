@@ -38,7 +38,10 @@ void start_pose_callback(const geometry_msgs::PoseWithCovarianceStampedPtr& post
   q.setW(post->pose.pose.orientation.w);
   transform.setRotation(q);
   // 广播world与base_link之间的tf数据
+  // tf::TransformBroadcaster br;
+  // br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "base_link"));
   
+
   std::cout << "Transform initialpost to base_link" << std::endl;
 }
 

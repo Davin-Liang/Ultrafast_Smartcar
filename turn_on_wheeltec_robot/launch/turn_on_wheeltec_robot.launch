@@ -1,0 +1,19 @@
+<launch>
+  <arg name="odom_frame_id"  default="odom_combined"/>
+
+  <!-- turn on base_serial 开启底层单片机的控制节点  -->
+  <include file="$(find turn_on_wheeltec_robot)/launch/include/base_serial.launch">
+    <arg name="odom_frame_id"  value="$(arg odom_frame_id)"/>
+  </include>
+
+  <!-- 发布用于建图、导航的TF关系与小车外形可视化 -->
+  <include file="$(find turn_on_wheeltec_robot)/launch/robot_model_visualization.launch">
+  </include>
+
+  <!-- 扩张卡尔曼滤波 发布odom_combined到footprint的TF,即小车定位 使用cartographer算法时不使用该滤波算法-->
+  <!-- <include file="$(find turn_on_wheeltec_robot)/launch/include/robot_pose_ekf.launch" unless="$(arg repeat)">
+    <arg name="is_cartographer" value="$(arg is_cartographer)"/>
+  </include> -->
+ </launch>
+
+

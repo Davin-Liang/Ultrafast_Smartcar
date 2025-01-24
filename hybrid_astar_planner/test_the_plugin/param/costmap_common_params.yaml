@@ -19,4 +19,30 @@ scan:
   marking: true 
   clearing: true
 
+# 配置代价地图层
+static_layer:
+  enabled: true
+
+inflation_layer:
+  enabled:              true
+  cost_scaling_factor:  10.0  # exponential rate at which the obstacle cost drops off (default: 10)
+  inflation_radius:     0.85  # max. distance from an obstacle at which costs are incurred for planning paths.
+
+obstacle_layer:
+  enabled: true
+  track_unknown_space: true
+  combination_method: 1
+
+  obstacle_range: 6.5
+  raytrace_range: 6.0
+  max_clearing_distance: 6.5
+
+  observation_sources: scan
+  scan: {
+    data_type: LaserScan,
+    topic: /scan,
+    marking: true,
+    clearing: true
+  }
+
 map_type: costmap

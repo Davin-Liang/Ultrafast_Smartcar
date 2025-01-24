@@ -8,6 +8,12 @@
 #include <geometry_msgs/Twist.h>
 #include <tf/transform_datatypes.h>
 
+#include <tf2_ros/transform_listener.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/PointStamped.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h> 
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+
 /* 将输入的任意弧度值归一化到区间[-pi, pi] */
 double Mod2Pi(const double &x) 
 {
@@ -24,8 +30,12 @@ namespace mpc_car {
 class Nodelet : public nodelet::Nodelet 
 {
  private:
+    tf2_ros::Buffer tf_buffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_; // 使用智能指针动态管理内存
+
   std::shared_ptr<MpcCar> mpcPtr_;
   ros::Timer plan_timer_;
+  ros::Subscriber odom_raw_sub_;
   ros::Subscriber odom_sub_;
   ros::Publisher cmd_pub_;
   ros::Subscriber path_sub_;
@@ -64,6 +74,10 @@ class Nodelet : public nodelet::Nodelet
       }
       init_path_seg = true; // 设置当前跟踪的路径已被处理，可以开始跟踪
     }
+
+    std::cout << "init_odom: " << init_odom << std::endl;
+    std::cout << "init_path_seg: " << init_path_seg << std::endl;
+    std::cout << "arrive_goal: " << arrive_goal << std::endl;
 
     if (init_odom && init_path_seg && !arrive_goal)
     {
@@ -151,10 +165,8 @@ class Nodelet : public nodelet::Nodelet
     return;
   }
 
-  void odom_call_back(const nav_msgs::Odometry::ConstPtr& msg) 
+  void odom_call_back(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
   {
-    double x = msg->pose.pose.position.x;
-    double y = msg->pose.pose.position.y;
     tf::Quaternion q(msg->pose.pose.orientation.x, 
                      msg->pose.pose.orientation.y, 
                      msg->pose.pose.orientation.z, 
@@ -163,12 +175,72 @@ class Nodelet : public nodelet::Nodelet
     double roll, pitch, yaw;
     m.getRPY(roll, pitch, yaw);
 
+    geometry_msgs::PointStamped odom_point;
+    odom_point.header.frame_id = "odom";
+    odom_point.header.stamp = msg->header.stamp;
+    odom_point.point.x = msg->pose.pose.position.x;
+    odom_point.point.y = msg->pose.pose.position.y;
+    odom_point.point.z = msg->pose.pose.position.z;
+
+    geometry_msgs::PointStamped map_point;
+    try 
+    {
+      // 查询从 odom 到 map 的变换
+      geometry_msgs::TransformStamped transform_stamped = tf_buffer_.lookupTransform(
+          "map", "odom", ros::Time(0), ros::Duration(3.0));
+      // 转换坐标
+      tf2::doTransform(odom_point, map_point, transform_stamped);
+    } catch (tf2::TransformException& ex) 
+    {
+      NODELET_WARN("Could not transform odom to map: %s", ex.what());
+    }
+
+    state_.x() = map_point.point.x;
+    state_.y() = map_point.point.y;
+    state_.z() = yaw;
+  }
+
+  void odom_raw_call_back(const nav_msgs::Odometry::ConstPtr& msg) 
+  {
+    // double x = msg->pose.pose.position.x;
+    // double y = msg->pose.pose.position.y;
+    // tf::Quaternion q(msg->pose.pose.orientation.x, 
+    //                  msg->pose.pose.orientation.y, 
+    //                  msg->pose.pose.orientation.z, 
+    //                  msg->pose.pose.orientation.w);
+    // tf::Matrix3x3 m(q);
+    // double roll, pitch, yaw;
+    // m.getRPY(roll, pitch, yaw);
+
     v.x() = msg->twist.twist.linear.x;
     v.y() = msg->twist.twist.linear.y;
 
-    state_.x() = x;
-    state_.y() = y;
-    state_.z() = yaw;
+    // geometry_msgs::PointStamped odom_point;
+    // odom_point.header.frame_id = "odom";
+    // odom_point.header.stamp = msg->header.stamp;
+    // odom_point.point.x = msg->pose.pose.position.x;
+    // odom_point.point.y = msg->pose.pose.position.y;
+    // odom_point.point.z = msg->pose.pose.position.z;
+
+    // geometry_msgs::PointStamped map_point;
+    // try {
+    //     // 查询从 odom 到 map 的变换
+    //     geometry_msgs::TransformStamped transform_stamped = tf_buffer_.lookupTransform(
+    //         "map", "odom", ros::Time(0), ros::Duration(3.0));
+
+    //     // 转换坐标
+    //     tf2::doTransform(odom_point, map_point, transform_stamped);
+
+    //     // NODELET_INFO("Odom -> Map: (%.2f, %.2f, %.2f) -> (%.2f, %.2f, %.2f)",
+    //     //               odom_point.point.x, odom_point.point.y, odom_point.point.z,
+    //     //               map_point.point.x, map_point.point.y, map_point.point.z);
+    // } catch (tf2::TransformException& ex) {
+    //     NODELET_WARN("Could not transform odom to map: %s", ex.what());
+    // }
+
+    // state_.x() = map_point.point.x;
+    // state_.y() = map_point.point.y;
+    // state_.z() = yaw;
     state_.w() = v.norm();
     init_odom = true; // 设置标志为已经成功接收到 odom 数据
   }
@@ -221,11 +293,21 @@ class Nodelet : public nodelet::Nodelet
     plan_timer_ = nh.createTimer(ros::Duration(dt), 
                                  &Nodelet::plan_timer_callback, 
                                  this);
+
+    tf_listener_ = std::make_shared<tf2_ros::TransformListener>(tf_buffer_);
+
     /* 订阅 odom */
-    odom_sub_ = nh.subscribe<nav_msgs::Odometry>("/odom", // /car_simulator/odom_car
+    // odom_sub_ = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/odom",
+    odom_raw_sub_ = nh.subscribe<nav_msgs::Odometry>("/odom_raw",
+                                                  1, 
+                                                  &Nodelet::odom_raw_call_back, 
+                                                  this);
+    odom_sub_ = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/odom",
                                                   1, 
                                                   &Nodelet::odom_call_back, 
                                                   this);
+
+
     /* 发布小车控制话题 */
     // cmd_pub_ = nh.advertise<car_msgs::CarCmd>("car_cmd", 1);
     cmd_pub_ = nh.advertise<geometry_msgs::Twist>("/my_cmd_vel", 1);

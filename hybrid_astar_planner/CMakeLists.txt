@@ -58,6 +58,8 @@ catkin_package(
   nav_core
   tf2_ros
   ompl
+  common
+  bspline_opt
 )
 
 include_directories(
@@ -92,7 +94,12 @@ add_library(${PROJECT_NAME}
   src/dubins.cpp
   src/ReedsShepp.cpp
 )
-target_link_libraries(${PROJECT_NAME} ${OMPL_LIBRARIES} COMMON_LIB BSPLINE_OPT_LIB)
+# ${catkin_LIBRARIES} COMMON_LIB BSPLINE_OPT_LIB
+link_directories(${catkin_LIB_DIRS}  /home/stitch/test/testdeploy_ws/devel/lib)
+
+
+target_link_libraries(${PROJECT_NAME} ${OMPL_LIBRARIES} ${catkin_LIBRARIES} COMMON_LIB BSPLINE_OPT_LIB)
+target_include_directories(${PROJECT_NAME} PUBLIC ${catkin_INCLUDE_DIRS} include ${EIGEN3_INCLUDE_DIR} )
 
 install(FILES bgp_plugin.xml
     DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}

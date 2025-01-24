@@ -45,10 +45,10 @@ find_package(
 
 
 catkin_package(
-    #  INCLUDE_DIRS include
+     INCLUDE_DIRS include
     #  LIBRARIES path_searcher
     #  CATKIN_DEPENDS nav_mags roscpp tf
-    #  DEPENDS system_lib
+     DEPENDS system_lib
 )
 file(GLOB_RECURSE srcs CONFIGURE_DEPENDS src/*.cpp src/*.cc include/*.h)
 
@@ -56,7 +56,7 @@ add_library(COMMON_LIB SHARED ${srcs})
 target_link_libraries(
     COMMON_LIB
     ${catkin_LIBRARIES}
-    glog::glog
-    osqp::osqp
+    glog
+    # osqp::osqp
 )
 target_include_directories(COMMON_LIB PUBLIC include ${catkin_INCLUDE_DIRS}  ${EIGEN3_INCLUDE_DIR} )

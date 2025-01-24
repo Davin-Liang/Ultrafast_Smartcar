@@ -44,10 +44,10 @@ find_package(
 
 
 catkin_package(
-    #  INCLUDE_DIRS include
+     INCLUDE_DIRS include
     #  LIBRARIES path_searcher
     #  CATKIN_DEPENDS nav_mags roscpp tf
-    #  DEPENDS system_lib
+     DEPENDS system_lib
 )
 file(GLOB_RECURSE srcs CONFIGURE_DEPENDS src/*.cpp include/*.h)
 

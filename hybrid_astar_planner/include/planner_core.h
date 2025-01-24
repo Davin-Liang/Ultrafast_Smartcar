@@ -49,6 +49,8 @@
 #include <costmap_2d/cost_values.h>
 #include "constants.h"
 #include "plan_container.hpp"
+// #include <bspline_opt/uniform_bspline.h>
+// #include "bspline_opt/bspline_optimizer.h"
 #include <bspline_opt/uniform_bspline.h>
 #include "bspline_opt/bspline_optimizer.h"
 

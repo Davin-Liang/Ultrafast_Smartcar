@@ -10,10 +10,16 @@
   <include file="$(find turn_on_wheeltec_robot)/launch/robot_model_visualization.launch">
   </include>
 
-  <!-- 扩张卡尔曼滤波 发布odom_combined到footprint的TF,即小车定位 使用cartographer算法时不使用该滤波算法-->
-  <!-- <include file="$(find turn_on_wheeltec_robot)/launch/include/robot_pose_ekf.launch" unless="$(arg repeat)">
-    <arg name="is_cartographer" value="$(arg is_cartographer)"/>
-  </include> -->
+  <!-- 启动 robot_pose_tf 定位 -->
+  <include file="$(find turn_on_wheeltec_robot)/launch/include/robot_pose_ekf.launch">
+  </include>
+
+  <!-- 启动雷达 -->
+  <include file="$(find lslidar_driver)/launch/include/lslidar_serial.launch">
+
+  <!-- 启动IMU -->
+  <include file="$(find fdilink_ahrs)/launch/include/ahrs_data.launch">
+
  </launch>
 
 

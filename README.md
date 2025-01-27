@@ -1,6 +1,13 @@
-# 编译步骤
+# Ultrafast Smartcar
 
-安装依赖
+## Enviroment Requirement
+
+* Noetic
+
+
+## Deployment Procedure
+
+1. Install dependancy.
 
 ```
 sudo apt-get install libpcap-dev
@@ -8,7 +15,18 @@ sudo apt-get install liborocos-bfl-dev
 sudo apt install libgoogle-glog-dev
 ```
 
-编译相关功能包（注意有先后顺序）
+2. Install Osqp.
+
+```
+cd MPC_car/osqp
+mkdir build
+cd build
+cmake -G "Unix Makefiles" ..
+cmake --build .
+sudo cmake --build . --target install
+```
+
+3. Conpile related feature packages.
 
 ```
 catkin_make -DCATKIN_WHITELIST_PACKAGES=lslidar_msgs
@@ -17,10 +35,9 @@ sudo cp devel/lib/libBSPLINE_OPT_LIB.so devel/lib/libCOMMON_LIB.so /usr/lib/
 catkin_make -DCATKIN_WHITELIST_PACKAGES=hybrid_astar_planner
 ```
 
+## Action Procedure
 
-# 使用步骤
-
-## 在虚拟机器人上使用
+### 在虚拟机器人上使用
 
 1. 启动 gazebo 仿真
 
@@ -31,7 +48,7 @@ roslaunch racebot_gazebo tianracer.launch
 2. 启动 robot_pose_tf 定位算法
 
 ```
-	roslaunch turn_on_wheeltec_robot robot_pose_ekf.launch
+roslaunch turn_on_wheeltec_robot robot_pose_ekf.launch
 ```
 
 3. 启动自定义全局规划器
@@ -58,8 +75,7 @@ roslaunch mpc_car simulation.launch
 roslaunch racebot_gazebo slam_gmapping.launch
 ```
 
-
-## 在实际机器人上使用
+### 在实际机器人上使用
 
 1. 启动阿克曼小车
 
@@ -96,3 +112,19 @@ roslaunch mpc_car simulation.launch
 ```
 
 ```
+
+# 开源参考
+
+[https://github.com/Lord-Z/ackermann_gazebo](https://github.com/Lord-Z/ackermann_gazebo)
+
+[https://github.com/6-robot/jie_ware](https://github.com/6-robot/jie_ware)
+
+[https://github.com/dengpw/hybrid_astar_planner](https://github.com/dengpw/hybrid_astar_planner)
+
+[https://github.com/QingZhuanya/corridor_Bspline_optimization](https://github.com/QingZhuanya/corridor_Bspline_optimization)
+
+[https://github.com/Raiden49/planner](https://github.com/Raiden49/planner)
+
+[https://github.com/qimao7213/Hybrid_A_Star-and-mpc_controller](https://github.com/qimao7213/Hybrid_A_Star-and-mpc_controller)
+
+[https://github.com/jwk1rose/MPC-Application-in-Trajectory-Tracking](https://github.com/jwk1rose/MPC-Application-in-Trajectory-Tracking)

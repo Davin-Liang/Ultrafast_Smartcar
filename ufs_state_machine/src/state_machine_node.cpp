@@ -14,7 +14,8 @@ enum State
     WAITING_FOR_GOAL,
     REPLAN_PATH_AND_MONITORING_PATH,
     TRACKING_ABNORMAL,
-    TRACKING_COMPLETE
+    TRACKING_COMPLETE,
+    READY_TO_COMPLETE
 };
 
 class StateMachine 
@@ -31,7 +32,7 @@ public:
 
         // 定时器
         path_monitor_timer_ = nh_.createTimer(ros::Duration(0.1), &StateMachine::pathMonitorCallback, this);
-        replan_timer_ = nh_.createTimer(ros::Duration(1.0), &StateMachine::replanTimerCallback, this);
+        replan_timer_ = nh_.createTimer(ros::Duration(3.0), &StateMachine::replanTimerCallback, this);
 
         state_ = WAITING_FOR_GOAL;
     }
@@ -86,7 +87,7 @@ private:
             }
         }
         
-        ROS_INFO("Costmap updated. Size: %dx%d", msg->info.width, msg->info.height);
+        // ROS_INFO("Costmap updated. Size: %dx%d", msg->info.width, msg->info.height);
     }
 
     // 其他回调函数保持不变...
@@ -135,8 +136,15 @@ private:
             return false;
         }
 
+        if (calculateDistanceToGoal(robot_pose) < 1.5) // TODO:
+        {
+            std::cout << "进入即将完成目标状态，停止一切重规划！" << std::endl;
+            state_ = READY_TO_COMPLETE;
+            return false;
+        }
+
         size_t start_index = findClosestPathPoint(robot_pose);
-        size_t end_index = std::min(start_index + 100, current_global_path_.poses.size());
+        size_t end_index = std::min(start_index + 200, current_global_path_.poses.size());
         
         for (size_t i = start_index; i < end_index; ++i) 
         {
@@ -149,7 +157,7 @@ private:
                 // ROS_WARN("World (%.2f, %.2f) -> Map (%d, %d), Cost: %d", 
                 //          pose.x, pose.y, mx, my, cost);
                 
-                if (cost >=99) 
+                if (cost >= 99) 
                 {
                     ROS_WARN("Obstacle detected on path!");
                     return true;
@@ -163,11 +171,31 @@ private:
         return false;
     }
 
+    double calculateDistanceToGoal(const geometry_msgs::PoseStamped& robot_pose) const 
+    {
+        // 检查路径是否有效
+        if (current_global_path_.poses.empty()) 
+        {
+            ROS_WARN("Global path is empty! Cannot calculate distance.");
+            return -1.0;
+        }
+
+        // 获取路径终点坐标
+        const geometry_msgs::Point& goal_position = 
+            current_global_path_.poses.back().pose.position;
+
+        return std::hypot(
+            robot_pose.pose.position.x - goal_position.x,
+            robot_pose.pose.position.y - goal_position.y
+        );
+    }
+
     // 其余工具函数保持不变...
     size_t findClosestPathPoint(const geometry_msgs::PoseStamped& robot_pose) 
     {
         double min_distance = std::numeric_limits<double>::max();
         size_t closest_index = 0;
+        int time = 0;
 
         for (size_t i = 0; i < current_global_path_.poses.size(); ++i) 
         {
@@ -180,6 +208,13 @@ private:
                 min_distance = distance;
                 closest_index = i;
             }
+            else
+            {
+                time += 1;
+            }
+            
+            if (time == 2)
+                break;
         }
 
         return closest_index;
@@ -207,7 +242,7 @@ private:
 
         if (checkPathForObstacles()) 
         {
-            state_ = TRACKING_COMPLETE;
+            // state_ = TRACKING_COMPLETE;
             requestReplan();
         }
     }
@@ -220,9 +255,11 @@ private:
 
     void replanTimerCallback(const ros::TimerEvent&) 
     {
+
         if (state_ == REPLAN_PATH_AND_MONITORING_PATH || state_ == TRACKING_ABNORMAL) 
         {
             // 保留原有逻辑
+            requestReplan();
         }
     }
 };

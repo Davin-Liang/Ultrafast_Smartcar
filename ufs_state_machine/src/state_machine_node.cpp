@@ -15,7 +15,8 @@ enum State
     REPLAN_PATH_AND_MONITORING_PATH,
     TRACKING_ABNORMAL,
     TRACKING_COMPLETE,
-    READY_TO_COMPLETE
+    READY_TO_COMPLETE,
+    STRAY_TOO_FAR_FROM_PATH
 };
 
 class StateMachine 
@@ -30,9 +31,17 @@ public:
         target_sub_ = nh_.subscribe("move_base_simple/goal", 10, &StateMachine::targetCallback, this);
         costmap_sub_ = nh_.subscribe("/move_base/global_costmap/costmap", 10, &StateMachine::costmapCallback, this); // 新增代价地图订阅
 
+        // 加载 ros 参数
+        nh_.getParam("/state_machine/path_monitor_time", path_monitor_time_);
+        nh_.getParam("/state_machine/replan_time", replan_time_);
+        nh_.getParam("/state_machine/stop_replan_distance_threshold", stop_replan_distance_threshold_);
+        nh_.getParam("/state_machine/deviate_path_threshold", deviate_path_threshold_);
+
+        // std::cout << "path_monitor_time = " << path_monitor_time_ << std::endl;
+
         // 定时器
-        path_monitor_timer_ = nh_.createTimer(ros::Duration(0.1), &StateMachine::pathMonitorCallback, this);
-        replan_timer_ = nh_.createTimer(ros::Duration(3.0), &StateMachine::replanTimerCallback, this);
+        path_monitor_timer_ = nh_.createTimer(ros::Duration(path_monitor_time_), &StateMachine::pathMonitorCallback, this);
+        replan_timer_ = nh_.createTimer(ros::Duration(replan_time_), &StateMachine::replanTimerCallback, this);
 
         state_ = WAITING_FOR_GOAL;
     }
@@ -61,6 +70,11 @@ private:
 
     costmap_2d::Costmap2D global_costmap_;  // 存储代价地图数据
     boost::mutex costmap_mutex_;            // 保证线程安全
+
+    double path_monitor_time_ = 0.1;
+    double replan_time_ = 3.0;
+    double stop_replan_distance_threshold_ = 1.5;
+    double deviate_path_threshold_ = 0.3;
 
     // 代价地图回调函数
     void costmapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg) 
@@ -136,17 +150,22 @@ private:
             return false;
         }
 
-        if (calculateDistanceToGoal(robot_pose) < 1.5) // TODO:
+        if (calculateDistanceToGoal(robot_pose) < stop_replan_distance_threshold_) // TODO:
         {
             std::cout << "进入即将完成目标状态，停止一切重规划！" << std::endl;
             state_ = READY_TO_COMPLETE;
             return false;
         }
 
-        size_t start_index = findClosestPathPoint(robot_pose);
-        size_t end_index = std::min(start_index + 200, current_global_path_.poses.size());
+        auto result = findClosestPathPoint(robot_pose);
+        if (result.second > deviate_path_threshold_) // TODO:  
+        {
+            state_ = STRAY_TOO_FAR_FROM_PATH;
+            return false;
+        }
+        size_t end_index = std::min(result.first + 200, current_global_path_.poses.size());
         
-        for (size_t i = start_index; i < end_index; ++i) 
+        for (size_t i = result.first; i < end_index; ++i) 
         {
             unsigned int mx, my;
             const auto& pose = current_global_path_.poses[i].pose.position;
@@ -191,7 +210,7 @@ private:
     }
 
     // 其余工具函数保持不变...
-    size_t findClosestPathPoint(const geometry_msgs::PoseStamped& robot_pose) 
+    std::pair<size_t, double> findClosestPathPoint(const geometry_msgs::PoseStamped& robot_pose) 
     {
         double min_distance = std::numeric_limits<double>::max();
         size_t closest_index = 0;
@@ -199,9 +218,13 @@ private:
 
         for (size_t i = 0; i < current_global_path_.poses.size(); ++i) 
         {
-            double dx = current_global_path_.poses[i].pose.position.x - robot_pose.pose.position.x;
-            double dy = current_global_path_.poses[i].pose.position.y - robot_pose.pose.position.y;
-            double distance = std::sqrt(dx * dx + dy * dy);
+            // double dx = current_global_path_.poses[i].pose.position.x - robot_pose.pose.position.x;
+            // double dy = current_global_path_.poses[i].pose.position.y - robot_pose.pose.position.y;
+            // double distance = std::sqrt(dx * dx + dy * dy);
+            double distance = std::hypot(
+                        current_global_path_.poses[i].pose.position.x - robot_pose.pose.position.x,
+                        current_global_path_.poses[i].pose.position.y - robot_pose.pose.position.y
+                    );
 
             if (distance < min_distance) 
             {
@@ -212,13 +235,14 @@ private:
             {
                 time += 1;
             }
-            
+
             if (time == 2)
                 break;
         }
 
-        return closest_index;
+        return {closest_index, min_distance};
     }
+
 
     bool getRobotPose(geometry_msgs::PoseStamped& robot_pose) 
     {
@@ -238,13 +262,15 @@ private:
 
     void pathMonitorCallback(const ros::TimerEvent&) 
     {
-        if (state_ != REPLAN_PATH_AND_MONITORING_PATH) return;
+        if (state_ == REPLAN_PATH_AND_MONITORING_PATH)
+            if (checkPathForObstacles()) 
+                requestReplan();
 
-        if (checkPathForObstacles()) 
-        {
-            // state_ = TRACKING_COMPLETE;
+        if (state_ == TRACKING_ABNORMAL)
             requestReplan();
-        }
+
+        if (state_ == STRAY_TOO_FAR_FROM_PATH)
+            requestReplan();
     }
 
     void requestReplan() 
@@ -256,7 +282,7 @@ private:
     void replanTimerCallback(const ros::TimerEvent&) 
     {
 
-        if (state_ == REPLAN_PATH_AND_MONITORING_PATH || state_ == TRACKING_ABNORMAL) 
+        if (state_ == REPLAN_PATH_AND_MONITORING_PATH) 
         {
             // 保留原有逻辑
             requestReplan();

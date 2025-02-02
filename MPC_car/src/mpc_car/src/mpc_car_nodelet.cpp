@@ -13,6 +13,13 @@
 #include <geometry_msgs/PointStamped.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h> 
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <std_msgs/Int32.h>
+
+enum TrackingStatus
+{
+  TRACKING_ABNORMAL,
+  TRACKING_COMPLETE
+};
 
 /* 将输入的任意弧度值归一化到区间[-pi, pi] */
 double Mod2Pi(const double &x) 
@@ -39,6 +46,7 @@ class Nodelet : public nodelet::Nodelet
   ros::Subscriber odom_sub_;
   ros::Publisher cmd_pub_;
   ros::Subscriber path_sub_;
+  ros::Publisher tracking_status_pub_;
   VectorX state_;
   Eigen::Vector2d v;
   bool init_odom = false;
@@ -50,6 +58,13 @@ class Nodelet : public nodelet::Nodelet
 
   std::vector<std::vector<Eigen::Vector2d>> path_segs;
   std::vector<int> path_direction;
+
+  void pulish_tracking_status(int status)
+  {
+    std_msgs::Int32 msg;
+    msg.data = status;
+    tracking_status_pub_.publish(msg);
+  }
 
   void plan_timer_callback(const ros::TimerEvent& event) 
   {
@@ -75,9 +90,9 @@ class Nodelet : public nodelet::Nodelet
       init_path_seg = true; // 设置当前跟踪的路径已被处理，可以开始跟踪
     }
 
-    std::cout << "init_odom: " << init_odom << std::endl;
-    std::cout << "init_path_seg: " << init_path_seg << std::endl;
-    std::cout << "arrive_goal: " << arrive_goal << std::endl;
+    // std::cout << "init_odom: " << init_odom << std::endl;
+    // std::cout << "init_path_seg: " << init_path_seg << std::endl;
+    // std::cout << "arrive_goal: " << arrive_goal << std::endl;
 
     if (init_odom && init_path_seg && !arrive_goal)
     {
@@ -129,6 +144,7 @@ class Nodelet : public nodelet::Nodelet
           msg.linear.x = 0;
           msg.angular.z = 0;
           cmd_pub_.publish(msg);
+          pulish_tracking_status(TRACKING_COMPLETE);
           arrive_goal = true;
           std::cout << "-------------------------------------------------------" << std::endl;
           std::cout << "--------------------已经到达终点了！--------------------" << std::endl;
@@ -139,6 +155,11 @@ class Nodelet : public nodelet::Nodelet
       else if (solve_result != 1)
       {
         std::cout << "求解失败，停车！" << std::endl;
+        geometry_msgs::Twist msg;
+        msg.linear.x = 0;
+        msg.angular.z = 0;
+        cmd_pub_.publish(msg);
+        pulish_tracking_status(TRACKING_ABNORMAL);
         arrive_goal = true;
       }
       ros::Time t2 = ros::Time::now();
@@ -311,6 +332,7 @@ class Nodelet : public nodelet::Nodelet
     /* 发布小车控制话题 */
     // cmd_pub_ = nh.advertise<car_msgs::CarCmd>("car_cmd", 1);
     cmd_pub_ = nh.advertise<geometry_msgs::Twist>("/my_cmd_vel", 1);
+    tracking_status_pub_ = nh.advertise<std_msgs::Int32>("/tracking_status", 1);
     /* 订阅全局路径 */
     // ros::TransportHints().tcpNoDelay() 的作用是通过禁用 TCP 的 Nagle 算法来减少网络通信的延迟，从而提高实时性能
     path_sub_ = nh.subscribe<nav_msgs::Path>("/move_base/HybridAStarPlanner/plan_bspline", 

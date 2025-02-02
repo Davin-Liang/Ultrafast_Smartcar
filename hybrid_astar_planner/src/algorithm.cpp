@@ -78,13 +78,15 @@ void nodeToPlan(Node2D* node, std::vector<geometry_msgs::PoseStamped>& plan, cos
 }
 
 void  updateH(Node3D& start, const Node3D& goal, Node2D* nodes2D, 
-    float* dubinsLookup, int width, int height, float inspireAstar) {
+    float* dubinsLookup, int width, int height, float inspireAstar) 
+{
   float reedsSheppCost = 0;
   float twoDCost = 0;
   float twoDoffset = 0;
   #ifdef use_ReedsShepp_heuristic
   // 假如车子可以后退，则可以启动Reeds-Shepp 算法
-  if (Constants::reverse && !Constants::dubins) {
+  if (Constants::reverse && !Constants::dubins) 
+  {
     //reeds_shepp算法还还存在问题，启用可能会造成搜寻路径增加等问题
 
     ompl::base::ReedsSheppStateSpace reedsSheppPath(Constants::r);
@@ -94,8 +96,7 @@ void  updateH(Node3D& start, const Node3D& goal, Node2D* nodes2D,
     rsStart->setYaw(start.getT());
     rsEnd->setXY(goal.getX(), goal.getY());
     rsEnd->setYaw(goal.getT());
-    reedsSheppCost = reedsSheppPath.distance(rsStart, rsEnd) * 1.1 + 
-      0.04 * start.getCost();
+    reedsSheppCost = reedsSheppPath.distance(rsStart, rsEnd) * 1.1 + 0.04 * start.getCost();
 
   }
   #endif

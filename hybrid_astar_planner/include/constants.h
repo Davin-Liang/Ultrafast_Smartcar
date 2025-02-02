@@ -40,9 +40,10 @@ static const int headings = 72;
 // const float dx[] = { 0.7068582,   0.705224,   0.705224};
 // const float dt[] = { 0,         0.1178097,   -0.1178097};
 
-const float dy[] = { 0,        -0.005198,  0.005198};
-const float dx[] = { 0.0883573,   0.088153,   0.088153};
-const float dt[] = { 0,         0.1178097,   -0.1178097};
+/* Constants::dx、dy、dt 定义了车辆的 离散化运动模型，模拟车辆在不同转向角度下的运动步长 */
+const float dy[] = { 0,        -0.005198,  0.005198}; // 车辆在 局部坐标系 下沿车头方向（x轴）的位移增量（单位：米）
+const float dx[] = { 0.0883573,   0.088153,   0.088153}; // 车辆在 局部坐标系 下横向（y轴）的位移增量（由转向引起）
+const float dt[] = { 0,         0.1178097,   -0.1178097}; // 车辆航向角（t）的变化量（单位：弧度），即转向导致的方向变化
 /// [°] --- The discretization value of the heading (goal condition)
 /// 朝向离散度数(以度表示)
 static const float deltaHeadingDeg = 360 / (float)headings; 

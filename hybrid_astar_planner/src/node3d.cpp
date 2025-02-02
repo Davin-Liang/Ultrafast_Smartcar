@@ -48,27 +48,30 @@ void Node3D::setT(float _t) {
 }
 
 
-float Node3D::calcG() {
+float Node3D::calcG() 
+{
   float g;
-  if(reverse) {
+  if (reverse) 
+  {
     // 如果进行的是倒车，对倒车、转向、改变方向进行惩罚
-    if (reverse != perd->reverse) {                     // 对改变行驶方向进行惩罚
+    if (reverse != perd->reverse) // 对改变行驶方向进行惩罚    
       g = Constants::dx[0] * Constants::penaltyCOD * Constants::penaltyReversing;
-    }
-    else {
+    else 
       g = Constants::dx[0] * Constants::penaltyReversing; 
-    }
   }
-  else {
+  else 
+  {
     // 如果此时位车辆前进情况，对其进行响应的代价计算
-    if (reverse != perd->reverse) {                     //对方向改变进行的惩罚
+    if (reverse != perd->reverse) // 对方向改变进行的惩罚                   
       g = Constants::dx[0] * Constants::penaltyCOD;
-    }
-    else {
-      if (t == perd->t) {
+    else 
+    {
+      if (t == perd->t) 
+      {
         g = Constants::dx[0];
       }
-      else {
+      else 
+      {
         g = Constants::dx[0] * Constants::penaltyTurning;
       }
     }

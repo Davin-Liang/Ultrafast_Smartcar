@@ -26,6 +26,7 @@ endif()
 
 set(ADDITIONAL_CXX_FLAG "-Wall -O3 -march=native")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ADDITIONAL_CXX_FLAG}")
+set(CMAKE_PREFIX_PATH "/usr/lib/cmake/glog" ${CMAKE_PREFIX_PATH})
 
 # Eigen
 find_package(Eigen3 CONFIG REQUIRED) #{CMAKE_MODULE_PATH} (/usr/share/cmake/Modules) eigen3 only have include in /usr/include/eigen3

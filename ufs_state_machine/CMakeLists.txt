@@ -11,7 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 catkin_package(
-  INCLUDE_DIRS include
+	#  INCLUDE_DIRS include
   LIBRARIES ufs_state_machine
   CATKIN_DEPENDS roscpp std_msgs nav_msgs costmap_2d geometry_msgs tf2_ros
 )

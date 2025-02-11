@@ -331,7 +331,7 @@ class Nodelet : public nodelet::Nodelet
 
     /* 发布小车控制话题 */
     // cmd_pub_ = nh.advertise<car_msgs::CarCmd>("car_cmd", 1);
-    cmd_pub_ = nh.advertise<geometry_msgs::Twist>("/my_cmd_vel", 1);
+    cmd_pub_ = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
     tracking_status_pub_ = nh.advertise<std_msgs::Int32>("/tracking_status", 1);
     /* 订阅全局路径 */
     // ros::TransportHints().tcpNoDelay() 的作用是通过禁用 TCP 的 Nagle 算法来减少网络通信的延迟，从而提高实时性能

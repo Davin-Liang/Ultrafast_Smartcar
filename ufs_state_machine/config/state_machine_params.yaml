@@ -1,5 +1,5 @@
-path_monitor_time: 0.2
-replan_time: 4.0
-stop_replan_distance_threshold: 1.5
+path_monitor_time: 0.1
+replan_time: 2.5
+stop_replan_distance_threshold: 0.5
 deviate_path_threshold: 0.3
 

@@ -1,0 +1,14 @@
+<launch>
+  <include file="$(find turn_on_wheeltec_robot)/launch/include/robot_pose_ekf.launch">
+  </include>
+
+  <include file="$(find hybrid_astar_planner)/test_the_plugin/launch/test.launch">
+  </include>
+
+  <include file="$(find ufs_state_machine)/launch/state_machine.launch">
+  </include>
+
+  <include file="$(find mpc_car)/launch/simulation.launch">
+  </include>
+
+ </launch>

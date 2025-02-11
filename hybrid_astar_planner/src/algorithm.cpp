@@ -156,8 +156,8 @@ Node3D* dubinsShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costmap) 
   return &dubinsNodes[i - 1];
 }
 
-Node3D* reedsSheppShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costmap) {
-
+Node3D* reedsSheppShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costmap) 
+{
   ReedsSheppStateSpace rs_planner(Constants::r);
   double length = -1;
   unsigned int poseX, poseY;
@@ -170,26 +170,32 @@ Node3D* reedsSheppShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costm
   Node3D* dubinsNodes = new Node3D [(int)(length / Constants::dubinsStepSize) + 1];
   int i = 0;
   dubinsNodes[1].setPerd(&start);
-  for (auto &point_itr : rs_path) {
+  for (auto &point_itr : rs_path) 
+  {
     dubinsNodes[i].setX(point_itr[0]);
     dubinsNodes[i].setY(point_itr[1]);
     dubinsNodes[i].setT(point_itr[2]);
 
     //collision check
     costmap->worldToMap(dubinsNodes[i].getX(), dubinsNodes[i].getY(), poseX, poseY);
-    if (costmap->getCost(poseX, poseY) < 100) {
+    if (costmap->getCost(poseX, poseY) < 100) 
+    {
       // set the predecessor to the previous step
-      if (i > 1) {
-        dubinsNodes[i].setPerd(&dubinsNodes[i - 1]);
+      if (i > 1) 
+      {
+        dubinsNodes[i].setPerd(&dubinsNodes[i - 1]); // 设置其前驱节点
       } 
       // else {
       //   dubinsNodes[i].setPerd(&start);
       // }
-      if (&dubinsNodes[i] == dubinsNodes[i].getPerd()) {
+      if (&dubinsNodes[i] == dubinsNodes[i].getPerd()) 
+      {
         std::cout << "looping shot";
       }
       i++;
-    } else {
+    } 
+    else 
+    {
       delete [] dubinsNodes;
       return nullptr;
     } 

@@ -26,22 +26,19 @@ void setMap(const nav_msgs::OccupancyGrid::Ptr map) {
   grid = map;
 }
 
-void start_pose_callback(const geometry_msgs::PoseWithCovarianceStampedPtr& post) {
-  
+void start_pose_callback(const geometry_msgs::PoseWithCovarianceStampedPtr& post) 
+{
   // 初始化tf数据
   transform.setOrigin(tf::Vector3(post->pose.pose.position.x, post->pose.pose.position.y, 0.0));
   //定义旋转的四元参数
-  //具体的TF变换内容可以参考《机器人学导论》（美）克来格（Craig,J.J）
   q.setX(post->pose.pose.orientation.x);
   q.setY(post->pose.pose.orientation.y);
   q.setZ(post->pose.pose.orientation.z);
   q.setW(post->pose.pose.orientation.w);
   transform.setRotation(q);
-  // 广播world与base_link之间的tf数据
   // tf::TransformBroadcaster br;
   // br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "base_link"));
   
-
   std::cout << "Transform initialpost to base_link" << std::endl;
 }
 

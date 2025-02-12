@@ -13,9 +13,9 @@ track_points_y: [0.5 , 0.5, 0.5 , 0.35, 0,-0.35, -0.5,-0.5, -0.5, -0.35, 0, 0.35
 desired_v: 0.2 # desired velocity
 
 ll: 0.2 # ll of the car//，车的长度
-dt: 0.1 # 
+dt: 0.35 # 
 rho: 1.0 # J = (x-x_r)^2+ (y-y_r)^2 + rho * (phi-phi_r)^2 //过程cost的权重
-N: 10 # horizon
+N: 15 # horizon
 rhoN: 2.0 #终端状态的权重？
 
 # lower and upper bound

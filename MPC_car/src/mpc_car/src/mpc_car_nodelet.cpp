@@ -175,7 +175,7 @@ class Nodelet : public nodelet::Nodelet
 
       geometry_msgs::Twist msg;
       if (path_direction[path_seg_index] > 0)
-        msg.linear.x = state_(3) + u(0) * 0.1;
+        msg.linear.x = state_(3) + u(0) * dt;
       else
         msg.linear.x = -abs(state_(3) + u(0) * 0.1);
 

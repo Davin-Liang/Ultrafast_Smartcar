@@ -29,7 +29,7 @@ def callback(data):
 
 def SubscribeAndPublish():
     rospy.init_node('nav_sim', anonymous=True)
-    rospy.Subscriber('my_cmd_vel', Twist, callback,queue_size=1,buff_size=52428800)
+    rospy.Subscriber('cmd_vel', Twist, callback,queue_size=1,buff_size=52428800)
     #rospy.Subscriber('cmd_vel', Twist, callback,queue_size=1,buff_size=52428800)
     rospy.spin()
 

@@ -2,7 +2,7 @@
   <include file="$(find turn_on_wheeltec_robot)/launch/include/robot_pose_ekf.launch">
   </include>
 
-  <include file="$(find hybrid_astar_planner)/test_the_plugin/launch/test.launch">
+  <include file="$(find hybrid_astar_planner)/test_the_plugin/launch/test_sim.launch">
   </include>
 
   <include file="$(find ufs_state_machine)/launch/state_machine.launch">

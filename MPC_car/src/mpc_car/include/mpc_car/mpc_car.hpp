@@ -343,6 +343,8 @@ class MpcCar {
     else if (phi - yaw < -M_PI)
       phi += 2 * M_PI;
     
+    std::cout << "4" << std::endl;
+
     Eigen::Vector2d gxy = s_(s_.arcL(), 0); // 提取路径上的目标点位置
     double dx = gxy.x() - x;
     double dy = gxy.y() - y;
@@ -363,6 +365,8 @@ class MpcCar {
     x0_observe_ = x0_observe;
     historyInput_.pop_front();
     historyInput_.push_back(predictInput_.front());
+
+    std::cout << "3" << std::endl;
 
     //这是XX的约束，由预测出来的delta，结合ddelta_max来确定delta的上下界？
     lu_.coeffRef(2, 0) = predictInput_.front()(1) - ddelta_max_ * dt_;

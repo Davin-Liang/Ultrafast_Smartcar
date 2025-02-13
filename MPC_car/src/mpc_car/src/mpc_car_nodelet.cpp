@@ -103,6 +103,8 @@ class Nodelet : public nodelet::Nodelet
     double angle_diff = vel_angle - state_.z();
     int forward_dir = path_direction[path_seg_index];
 
+    std::cout << "1" << std::endl;
+
     angle_diff = Mod2Pi(vel_angle - state_.z());
     // 如果此时的速度方向是倒车，但是路径是正向，则速度取负数
     if (forward_dir == 1 && abs(angle_diff) > 0.75 * M_PI)  state_(3) *= -1;
@@ -110,6 +112,8 @@ class Nodelet : public nodelet::Nodelet
     if (forward_dir == 0)                                   state_(3) *= -1;
     // // 如果此时的速度方向是正车，但是路径是倒车，则速度取负数
     if (forward_dir == 0 && abs(angle_diff) < 0.25 * M_PI)  state_(3) *= -1;
+
+    std::cout << "2" << std::endl;
 
       int solve_result = mpcPtr_->solveQP(state_);
       if (solve_result == 11) // 11表示到达终点了

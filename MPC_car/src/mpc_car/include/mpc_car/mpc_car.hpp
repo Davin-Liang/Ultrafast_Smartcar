@@ -363,8 +363,18 @@ class MpcCar {
   int solveQP(const VectorX& x0_observe) 
   {
     x0_observe_ = x0_observe;
+    std::cout << "2.1" << std::endl;
+    if (!historyInput_.empty()) {
     historyInput_.pop_front();
-    historyInput_.push_back(predictInput_.front());
+}
+
+//    historyInput_.pop_front();
+    std::cout << "2.2" << std::endl;
+    if (!predictInput_.empty()) {
+        historyInput_.push_back(predictInput_.front());
+    }
+
+    //historyInput_.push_back(predictInput_.front());
 
     std::cout << "3" << std::endl;
 

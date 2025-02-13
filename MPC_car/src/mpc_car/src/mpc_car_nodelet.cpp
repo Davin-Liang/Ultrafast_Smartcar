@@ -179,11 +179,11 @@ class Nodelet : public nodelet::Nodelet
 
       geometry_msgs::Twist msg;
       if (path_direction[path_seg_index] > 0)
-        msg.linear.x = state_(3) + u(0) * 0.35;
+        msg.linear.x = state_(3) + u(0) * 0.03;
       else
-        msg.linear.x = -abs(state_(3) + u(0) * 0.35);
+        msg.linear.x = -abs(state_(3) + u(0) * 0.03);
 
-      msg.angular.z = u(1);
+      msg.angular.z = u(1)*0.8;
       cmd_pub_.publish(msg);     
       mpcPtr_->visualization();
     }

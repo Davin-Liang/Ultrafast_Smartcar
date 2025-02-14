@@ -65,7 +65,7 @@ bool hybridAstar::calculatePath(
   * 这里把resolution写死，由于本人能力有限暂时此功，其实是无奈之举，
   * 未来需要在后续的代码中加入能够自动调节分辨率的功能，增加代码鲁棒性
   ****************************************************************/
-  float resolution = 0.1;//costmap->getResolution() 0.125
+  float resolution = 0.2;//costmap->getResolution() 0.125
   unsigned int originalX, originalY, goalX, goalY;
   int cells_x,cells_y;
   cells_x = cellsX / 2.5;
@@ -93,7 +93,7 @@ bool hybridAstar::calculatePath(
   //************************************************
   // 建立启发势场取决于地图大小,231(nodes/ms)
   std::unordered_map<int, std::shared_ptr<Node2D>> dp_map = 
-      grid_a_star_heuristic_generator_->GenerateDpMap(goal_x, goal_y, costmap);    
+      grid_a_star_heuristic_generator_->GenerateDpMap(goal_x, goal_y, costmap); //todo    
   ros::Time end_time = ros::Time::now();
 
   #ifdef debug_mode

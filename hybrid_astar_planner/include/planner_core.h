@@ -167,7 +167,8 @@ class HybridAStarPlanner : public nav_core::BaseGlobalPlanner {
          * @param segment 轨迹编号
          * @return 安全走廊
         */      
-        std::pair<VecCube, VecCube> corridorGeneration(const VectorVec3d &path_coord, int segment);
+        // std::pair<VecCube, VecCube> corridorGeneration(const VectorVec3d &path_coord, int segment);
+        VecCube corridorGeneration(const VectorVec3d &path_coord, int segment);
 
         /**
          * @brief 根据一个点生成一个长方形，但这个长方形还是一个点，只是长方形的四个点重合到了一块
@@ -190,7 +191,8 @@ class HybridAStarPlanner : public nav_core::BaseGlobalPlanner {
 
         void timeAllocation(std::vector<Cube> & corridor, const Vec3d& start_pt_, const Vec3d& end_pt_);
 
-        void ConnectCorridors(std::vector<std::pair<VecCube, VecCube>>& cs, VecCube& connected_cs);
+        // void ConnectCorridors(std::vector<std::pair<VecCube, VecCube>>& cs, VecCube& connected_cs);
+        void ConnectCorridors(std::vector<VecCube>& cs, VecCube& connected_cs);
 
         void PublishCorridor(const std::vector<Cube> &corridor);
 
@@ -209,7 +211,8 @@ class HybridAStarPlanner : public nav_core::BaseGlobalPlanner {
         ros::ServiceServer make_plan_srv_;
         bool use_hybrid_astar;
         std::vector<HybridAStartResult> partition_trajectories;
-        std::vector<std::pair<VecCube, VecCube>> corridors;
+        // std::vector<std::pair<VecCube, VecCube>> corridors;
+        std::vector<VecCube> corridors;
         VecCube connected_corridors;
         Cube lstcube;
         double delta_t_ = 0.0;

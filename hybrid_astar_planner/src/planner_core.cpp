@@ -171,9 +171,11 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
     {
       post_path.push_back({trajectory.x[i], trajectory.y[i], 0}); // 只需取出每个轨迹点的位置坐标
     }
-    auto temp = corridorGeneration(post_path, segment); // 生成安全走廊
+    // std::pair<VecCube, VecCube> temp = corridorGeneration(post_path, segment); // 生成安全走廊todo
+    VecCube temp = corridorGeneration(post_path, segment);
     std::cout << "成功为第 " << segment << " 段轨迹生成安全走廊！"<< std::endl;
-    timeAllocation(temp.second, start_state, goal_state); // 为安全走廊分配时间信息
+    // timeAllocation(temp.second, start_state, goal_state); // 为安全走廊分配时间信息
+    timeAllocation(temp, start_state, goal_state); // 为安全走廊分配时间信息
     std::cout << "成功为第 " << segment << " 处安全走廊分配时间信息！"<< std::endl;
     corridors.push_back(temp);
   }
@@ -182,7 +184,7 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
   std::cout << "成功合并走廊！" << std::endl;
   std::cout << "Time consume in corridor generation is: " << time_bef_corridor.End() <<" ms."<< std::endl;
 
-  PublishCorridor(connected_corridors); // 发布安全走廊
+  //PublishCorridor(connected_corridors); // 发布安全走廊
 
   /* ----------------------------------------------------------------------------------------------- */
   /* -------------------------------------------B 样条优化------------------------------------------- */
@@ -223,7 +225,9 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
 
     Timer time_bef_optimization;
     /* 开始优化！！！！！！！！！！！！！！！！！！！！！ */
-    bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts, corridors[i].second);
+    // bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts, corridors[i].second);
+    bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts, corridors[i]);
+    std::cout << "3" << std::endl;
     publishPathFromCtrlPts(ctrl_pts);
     total_opt_time += time_bef_optimization.End();
     std::cout << "Time consume in optimization is: " << time_bef_optimization.End() <<" ms"<< std::endl;
@@ -299,7 +303,7 @@ void HybridAStarPlanner::DataTransform(std::vector<geometry_msgs::PoseStamped>& 
   for (unsigned int i = 0; i < plan.size(); i++)
   {
     result->x.emplace_back(plan[i].pose.position.x);
-    result->y.emplace_back(plan[i].pose.position.y);
+    result->y.emplace_back(plan[i].pose.position.y);//todo
     result->phi.emplace_back(tf::getYaw(plan[i].pose.orientation));
   }
 } /* end of DataTransform */
@@ -420,7 +424,8 @@ bool HybridAStarPlanner::GenerateSpeedAcceleration(HybridAStartResult* result)
   return true;
 } /* end of GenerateSpeedAcceleration */
 
-std::pair<VecCube, VecCube> HybridAStarPlanner::corridorGeneration(const VectorVec3d &path_coord, int segment)
+// std::pair<VecCube, VecCube> HybridAStarPlanner::corridorGeneration(const VectorVec3d &path_coord, int segment)
+VecCube HybridAStarPlanner::corridorGeneration(const VectorVec3d &path_coord, int segment)
 {
   VecCube SmoothPathcubeList;
   VecCube bsplinecubeList;
@@ -439,7 +444,8 @@ std::pair<VecCube, VecCube> HybridAStarPlanner::corridorGeneration(const VectorV
     SmoothPathcubeList.push_back(cube);
   }
 
-  return {SmoothPathcubeList, bsplinecubeList};
+  // return {SmoothPathcubeList, bsplinecubeList};
+  return bsplinecubeList;
 } /* end of corridorGeneration */
 
 Cube HybridAStarPlanner::generateCube(Vec3d pt)
@@ -782,14 +788,16 @@ void HybridAStarPlanner::timeAllocation(std::vector<Cube>& corridor, const Vec3d
   }
 }
 
-void HybridAStarPlanner::ConnectCorridors(std::vector<std::pair<VecCube, VecCube>>& cs, VecCube& connected_cs)
+// void HybridAStarPlanner::ConnectCorridors(std::vector<std::pair<VecCube, VecCube>>& cs, VecCube& connected_cs)
+void HybridAStarPlanner::ConnectCorridors(std::vector<VecCube>& cs, VecCube& connected_cs)
 {
   connected_cs.clear();
 
   for (const auto& corridor : cs)
   {
-    const auto& second_part = corridor.second;
-    connected_cs.insert(connected_cs.end(), second_part.begin(), second_part.end());
+    // const auto& second_part = corridor.second;
+    const auto& second_part = corridor;
+    connected_cs.insert(connected_cs.end(), second_part.begin(), second_part.end()); // todo
   }
 }
 
@@ -797,7 +805,7 @@ void HybridAStarPlanner::PublishCorridor(const std::vector<Cube> &corridor)
 {
   for (auto & mk: corridor_array.markers) 
       mk.action = visualization_msgs::Marker::DELETE;  // 删除上一次的cube  // 删除上一次的cube
-  corridor_pub_.publish(corridor_array);
+  corridor_pub_.publish(corridor_array); // todo
 
   corridor_array.markers.clear();  // 和DELETE操作重复
 

@@ -4,7 +4,7 @@
   </node> -->
   <group>
     <node pkg="nodelet" type="nodelet" name="manager" args="manager" output="screen">
-      <param name="num_worker_threads" value="10"/>
+      <param name="num_worker_threads" value="6"/>
     </node>
     <!-- <include file="$(find car_simulator)/launch/car_simulator.launch"/> -->
     <node pkg="nodelet" type="nodelet" name="mpc_car" args="load mpc_car/Nodelet manager" output="screen">

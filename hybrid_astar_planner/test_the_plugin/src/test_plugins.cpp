@@ -42,7 +42,7 @@
 TestPlanner::TestPlanner(tf2_ros::Buffer &_tf):
 tf(_tf){
     //订阅目标主题，绑定响应函数,这里使用suscribe订阅目标点，当目标点刷新就重新进行路径规划
-    make_plane = n.subscribe("/move_base_simple/goal", 1, &TestPlanner::setgoal, this);
+    make_plane = n.subscribe("/move_base_simple/goal", 5, &TestPlanner::setgoal, this);
     //定义类插件的名称，以便之后接入系统
     global_planner = std::string("hybrid_astar_planner/HybridAStarPlanner");    
     // ros::NodeHandle nh("~/global_costmap");
@@ -70,7 +70,7 @@ tf(_tf){
     }
 }
 void TestPlanner::setgoal(const geometry_msgs::PoseStamped::ConstPtr& _goal) {
-    // std::cout << "receved the goal pose" <<std::endl;
+    std::cout << "receved the goal pose" <<std::endl;
     goal_pose.pose = _goal->pose;
     goal_pose.pose.orientation = _goal->pose.orientation;
     goal_pose.header = _goal->header;

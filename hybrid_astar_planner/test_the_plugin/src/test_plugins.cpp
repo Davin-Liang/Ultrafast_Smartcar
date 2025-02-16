@@ -56,7 +56,6 @@ tf(_tf){
     //指定costmap中的base_link为起始坐标
     robot_pose.header.frame_id = "base_link";  
                                      
-    transformStarPose();
     try
     {
         planner_=bgp_loader_.createInstance(global_planner);                    
@@ -71,15 +70,19 @@ tf(_tf){
 }
 void TestPlanner::setgoal(const geometry_msgs::PoseStamped::ConstPtr& _goal) {
     std::cout << "receved the goal pose" <<std::endl;
-    goal_pose.pose = _goal->pose;
-    goal_pose.pose.orientation = _goal->pose.orientation;
-    goal_pose.header = _goal->header;
-    transformStarPose();
+
+    geometry_msgs::PoseStamped start_pose;
+    if (!(transformStarPose(&start_pose))){
+        return;
+    }
+
     costmap->start();
-    planner_->makePlan(start_pose, goal_pose, *planner_plan_);
+
+    planner_plan_->clear();
+    planner_->makePlan(start_pose, *_goal, *planner_plan_);
 }
 
-bool TestPlanner::transformStarPose(void){
+bool TestPlanner::transformStarPose(geometry_msgs::PoseStamped *start_pose) {
     try
     {
         start_transform = tf.lookupTransform("map", "base_link", ros::Time(0), ros::Duration(3.0));
@@ -89,13 +92,13 @@ bool TestPlanner::transformStarPose(void){
         std::cerr << e.what() << '\n';
         return false;
     }
-    start_pose.pose.position.x = start_transform.transform.translation.x;
-    start_pose.pose.position.y = start_transform.transform.translation.y;
-    start_pose.pose.position.z = start_transform.transform.translation.z;
-    start_pose.pose.orientation.w = start_transform.transform.rotation.w;
-    start_pose.pose.orientation.x = start_transform.transform.rotation.x;
-    start_pose.pose.orientation.y = start_transform.transform.rotation.y;
-    start_pose.pose.orientation.z = start_transform.transform.rotation.z;
+    start_pose->pose.position.x = start_transform.transform.translation.x;
+    start_pose->pose.position.y = start_transform.transform.translation.y;
+    start_pose->pose.position.z = start_transform.transform.translation.z;
+    start_pose->pose.orientation.w = start_transform.transform.rotation.w;
+    start_pose->pose.orientation.x = start_transform.transform.rotation.x;
+    start_pose->pose.orientation.y = start_transform.transform.rotation.y;
+    start_pose->pose.orientation.z = start_transform.transform.rotation.z;
     return true;
 }
 TestPlanner::~TestPlanner() {

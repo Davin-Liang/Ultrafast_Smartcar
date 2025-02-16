@@ -109,6 +109,8 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
                                   const geometry_msgs::PoseStamped &goal, 
                                   std::vector<geometry_msgs::PoseStamped>& plan) 
 {
+  plan.clear();
+  std::vector<geometry_msgs::PoseStamped> plan_;
   // std::cout << "the start pose of planner x:" << start.pose.position.x << " y:" << start.pose.position.y << std::endl;
   // std::cout << "the goal pose of planner x:" << goal.pose.position.x << " y:" << goal.pose.position.y << std::endl;
   Vec3d start_state(start.pose.position.x,
@@ -133,25 +135,25 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
     ROS_WARN("Failed to create a global plan!");
     return false; // 代表规划失败
   }
-  plan.clear(); // 清除先前规划得到的路径
+
   /* 正式将参数传入规划器中 */
   visualization_msgs::MarkerArray AstarpathNodes;
   if( !_planner->calculatePath(start, 
                               goal, 
                               costmap->getSizeInCellsX(), 
                               costmap->getSizeInCellsY(), 
-                              plan, 
+                              plan_, 
                               path_vehicles_pub_, 
                               AstarpathNodes) ) 
   {
     return false; // 代表规划失败
   }
 
-  std::cout << "规划出来的初始全局路径一共有 " << plan.size() << " 个轨迹点！" << std::endl;
+  std::cout << "规划出来的初始全局路径一共有 " << plan_.size() << " 个轨迹点！" << std::endl;
 
   /* 分割路径，为每个分段轨迹生成速度、加速度、转向角等动态信息 */
   HybridAStartResult result;
-  DataTransform(plan, &result);
+  DataTransform(plan_, &result);
   if (!TrajectoryPartition(result, &partition_trajectories)) 
   {
       std::cout << "分割路径失败！" << std::endl;
@@ -426,12 +428,12 @@ VecCube HybridAStarPlanner::corridorGeneration(const VectorVec3d &path_coord, in
 {
   VecCube SmoothPathcubeList;
   VecCube bsplinecubeList;
-  lstcube.clear();
-  for (int i = 0; i < (int)path_coord.size(); i++)
+  Cube lstcube;
+  for (size_t i = 0; i < path_coord.size(); ++i)
   {
     Cube cube = generateCube(path_coord[i]); // 根据一个点生成一个平面长方形，其实该长方形是一个点
     auto result = inflateCube(cube, lstcube); // 检查该次循环生成的长方形是否在上次生成的长方形内
-    if ((0 == i) || (path_coord.size() - 1 == i) || (1 == i % 2)) 
+    if ((0 == i) || (path_coord.size() == i + 1) || (1 == i % 2)) 
       bsplinecubeList.push_back(result.first);
 
     if (result.second == false) // 当前路径点膨胀一次之后的cube被上一个cube完全包含,对该点进行剪枝
@@ -441,7 +443,6 @@ VecCube HybridAStarPlanner::corridorGeneration(const VectorVec3d &path_coord, in
     SmoothPathcubeList.push_back(cube);
   }
 
-  // return {SmoothPathcubeList, bsplinecubeList};
   return bsplinecubeList;
 } /* end of corridorGeneration */
 

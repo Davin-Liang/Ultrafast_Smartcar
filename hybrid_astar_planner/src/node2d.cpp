@@ -83,9 +83,7 @@ std::unordered_map<int, std::shared_ptr<Node2D>> GridSearch::GenerateDpMap(
     dp_map_.emplace(current_node->getindex(cells_x), current_node);
     std::vector<std::shared_ptr<Node2D>> adjacent_nodes = 
         getAdjacentPoints(cells_x, cells_y, charMap, current_node );
-    for (std::vector<std::shared_ptr<Node2D>>::iterator 
-            it = adjacent_nodes.begin(); it != adjacent_nodes.end(); ++it) {
-      std::shared_ptr<Node2D> next_node = *it;
+    for (auto &next_node : adjacent_nodes) {
       if (dp_map_.find(next_node->getindex(cells_x)) != dp_map_.end()) {
         continue;
       }
@@ -113,21 +111,21 @@ std::vector<std::shared_ptr<Node2D>> GridSearch::getAdjacentPoints(int cells_x,
   // std::cout << "the cost-so-far of this node" << point->getG() << std::endl;
   for (int x = point->getX() - 1; x <= point->getX() + 1; ++x) {
     for (int y = point->getY() - 1; y <= point->getY() + 1; ++y) {
-      if (charMap[x  + y* cells_x] < 250 &&x < cells_x && y < cells_y 
-          && x > 0 && y > 0) {
-        std::shared_ptr<Node2D> node = std::make_shared<Node2D>(x,y);
+      if (x < cells_x && y < cells_y && x > 0 && y > 0
+          && charMap[x  + y* cells_x] < 250 ) {
+        std::shared_ptr<Node2D> node = std::make_shared<Node2D>(x, y);
         if((abs(x - point->getX()) + abs(y - point->getY())) == 2) {
           g = 1.4142;
         } else {
           g = 1;
         }
-        node->SetPathCost(point->getG() + 0.1*charMap[x  + y* cells_x] + g);
+        node->SetPathCost(point->getG() + 0.1* charMap[x + y* cells_x] + g);
         node->setX(x);
         node->setY(y);
         adjacentNodes.emplace_back(node);
       }
     }
-  }//end of for
+  } //end of for
   return adjacentNodes;
 }
 

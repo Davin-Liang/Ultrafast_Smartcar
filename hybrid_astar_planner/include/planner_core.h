@@ -188,7 +188,8 @@ class HybridAStarPlanner : public nav_core::BaseGlobalPlanner {
 
         void PublishCorridor(const std::vector<Cube> &corridor);
 
-        void getSample(const HybridAStartResult& trajectory, vector<Eigen::Vector3d>& point_set, 
+        void getSample(const HybridAStartResult& trajectory,
+                vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>* point_set,  
                 int sample_count, double& start_angle, double& end_angle, double& total_distance);
 
         std::pair<bool,bool> CheckGear(const struct HybridAStartResult &trajectory);

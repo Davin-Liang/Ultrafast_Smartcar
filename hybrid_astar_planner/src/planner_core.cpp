@@ -172,7 +172,6 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
     {
       post_path.push_back({trajectory.x[i], trajectory.y[i], 0}); // 只需取出每个轨迹点的位置坐标
     }
-    // std::pair<VecCube, VecCube> temp = corridorGeneration(post_path, segment); // 生成安全走廊todo
     VecCube temp = corridorGeneration(post_path, segment);
     std::cout << "成功为第 " << segment << " 段轨迹生成安全走廊！"<< std::endl;
     // timeAllocation(temp.second, start_state, goal_state); // 为安全走廊分配时间信息
@@ -190,18 +189,17 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
   /* ----------------------------------------------------------------------------------------------- */
   /* -------------------------------------------B 样条优化------------------------------------------- */
   /* ----------------------------------------------------------------------------------------------- */
-  vector<Eigen::Vector3d> start_end_derivatives;
+  
   double total_opt_time = 0.0;
   vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> BSplineSmooth_set;
   for (int i = 0; i < partition_trajectories.size(); ++i)
   {
-    vector<Eigen::Vector3d> point_set;
+    vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> point_set;
     double start_angle, end_angle, distance;
     int sample_count = 2; // 隔 sample_count-1 个原始点进行采样
-    start_end_derivatives.clear();
 
     /* 得到样本路径 */
-    getSample(partition_trajectories[i], point_set, sample_count, start_angle, end_angle, distance);
+    getSample(partition_trajectories[i], &point_set, sample_count, start_angle, end_angle, distance);
     std::cout << "得到第 " << i << " 样本路径" << std::endl;
     if (point_set.size() < 4) 
     {
@@ -213,13 +211,14 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
                                : (Constants::ctrl_pt_dist / Constants::MAX_Vel * 5);
 
     /* 初始化起点和终点的速度和加速度约束 */
+    vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> start_end_derivatives;
     start_end_derivatives.push_back({cos(start_angle), sin(start_angle), 0}); // 起点的一阶导数（速度）
     start_end_derivatives.push_back({cos(end_angle), sin(end_angle), 0}); // 终点的一阶导数（速度）
     start_end_derivatives.push_back(Eigen::Vector3d::Zero()); // 起点的二阶导数（加速度）
     start_end_derivatives.push_back(Eigen::Vector3d::Zero()); // 终点的二阶导数（加速度）
     
     Eigen::MatrixXd ctrl_pts;
-    opt_planner::UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
+    opt_planner::UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, &ctrl_pts);
     bspline_optimizer_rebound_->initControlPoints(ctrl_pts, true);
 
     Timer time_bef_optimization;
@@ -261,9 +260,11 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
 
   /* 参数后期处理，发布到RViz上进行可视化 */
   //path只能发布2D的节点
-  publishPlan(plan); // 发布初始的全局规划路径
-  publishPathNodes(plan);
+  publishPlan(plan_); // 发布初始的全局规划路径
+  publishPathNodes(plan_);
   publishPlan_bspline(BSplineSmooth_set); // 发布 B 样条优化后的路径
+
+  plan.swap(plan_);
   return true; // 代表规划成功
 } /* end of makeplan */
 
@@ -843,34 +844,35 @@ void HybridAStarPlanner::PublishCorridor(const std::vector<Cube> &corridor)
   corridor_pub_.publish(corridor_array);
 } /* end of PublishCorridor */
 
-void HybridAStarPlanner::getSample(const HybridAStartResult& trajectory, vector<Eigen::Vector3d>& point_set, 
-              int sample_count, double& start_angle, double& end_angle, double& total_distance)
+void HybridAStarPlanner::getSample(const HybridAStartResult& trajectory, 
+  vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>* point_set, 
+  int sample_count, double& start_angle, double& end_angle, double& total_distance)
 {
-  if (point_set.size() == 4) 
+  if (trajectory.x.size() == 4) 
     sample_count = 1;
 
   /* 得到抽样路径 */
-  point_set.emplace_back(trajectory.x.front(),trajectory.y.front(), trajectory.phi.front()); // 插入轨迹头
-  for (int j = 1; j < trajectory.x.size()-1; j+=sample_count)
-  {
-    Eigen::Vector3d point3D(trajectory.x[j],trajectory.y[j], trajectory.phi[j]);
-    point_set.emplace_back(std::move(point3D));
+  size_t j = 0;
+  while (j + 1 < trajectory.x.size()) {
+    point_set->emplace_back(trajectory.x[j],trajectory.y[j], trajectory.phi[j]);
+    j += sample_count;
   }
-  point_set.emplace_back(trajectory.x.back(),trajectory.y.back(), trajectory.phi.back()); // 插入轨迹尾
-
+  if (j + 1 != trajectory.x.size()) {
+    point_set->emplace_back(trajectory.x.back(),trajectory.y.back(), trajectory.phi.back()); // 插入轨迹尾
+  }
   /* 计算路径总长度 */
   double sum = 0;
-  for (long j = 1; j < point_set.size(); j++) // 从第二个点开始
+  for (size_t j = 1; j < point_set->size(); ++j) // 从第二个点开始
   {
-    sum += (point_set[j].head(2) - point_set[j-1].head(2)).norm();
+    sum += (point_set->at(j).head(2) - point_set->at(j - 1).head(2)).norm();
   }
   //一段路径出入射角度保持一致
   //CheckGear()函数在PathSmoothAlgorithm()中调用，如果没有调用PathSmoothAlgorithm()则gear为初始值！！！！
   gear_ = CheckGear(trajectory);
-  start_angle = gear_.first ? point_set[0](2) : common::math::NormalizeAngle(point_set[0](2) + M_PI);
-  end_angle = gear_.second ? point_set[point_set.size()-1](2) : common::math::NormalizeAngle(point_set[point_set.size()-1](2) + M_PI);
+  start_angle = gear_.first ? point_set->front()(2) : common::math::NormalizeAngle(point_set->front()(2) + M_PI);
+  end_angle = gear_.second ? point_set->back()(2) : common::math::NormalizeAngle(point_set->back()(2) + M_PI);
   //一段路径的从起点到终点的位移
-  total_distance = (point_set.back().head(2) - point_set.front().head(2)).norm();
+  total_distance = (point_set->back().head(2) - point_set->front().head(2)).norm();
   std::cout << "一段路径的从起点到终点的位移(s): "<< total_distance << std::endl;
 }
 

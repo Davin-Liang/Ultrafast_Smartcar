@@ -213,9 +213,9 @@ namespace opt_planner
   // void UniformBspline::recomputeInit() {}
   /* 基于 均匀 B 样条 的路径参数化方法，核心目的是根据离散的路径点和起终端导数信息，计算出一组“控制点”，以构建平滑的 B 样条路径 */
   void UniformBspline::parameterizeToBspline(const double &ts, 
-                                             const vector<Eigen::Vector3d> &point_set,
-                                             const vector<Eigen::Vector3d> &start_end_derivative,
-                                             Eigen::MatrixXd &ctrl_pts)
+                                             const vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> &point_set,
+                                             const vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> &start_end_derivative,
+                                             Eigen::MatrixXd *ctrl_pts)
   {
     /* B样条基函数的公式 */
     //B03 = 1/6(1-u)^3
@@ -302,10 +302,10 @@ namespace opt_planner
 
     // convert to control pts
     /* 控制点矩阵 ctrl_pts 被填充成三行（分别对应x、y、z坐标），每行有 K+2 个控制点 */
-    ctrl_pts.resize(3, K + 2); // 对于 K 个路径点，我们需要 K+2 个控制点来完全确定B样条曲线
-    ctrl_pts.row(0) = px.transpose();
-    ctrl_pts.row(1) = py.transpose();
-    ctrl_pts.row(2) = pz.transpose();
+    ctrl_pts->resize(3, K + 2); // 对于 K 个路径点，我们需要 K+2 个控制点来完全确定B样条曲线
+    ctrl_pts->row(0) = px.transpose();
+    ctrl_pts->row(1) = py.transpose();
+    ctrl_pts->row(2) = pz.transpose();
 
     // cout << "[B-spline]: parameterization ok." << endl;
   }

@@ -56,9 +56,10 @@ namespace opt_planner
     // constraints
     // input : (K+4) points with boundary vel/acc; ts
     // output: (K+2) control_pts
-    static void parameterizeToBspline(const double &ts, const vector<Eigen::Vector3d> &point_set,
-                                      const vector<Eigen::Vector3d> &start_end_derivative,
-                                      Eigen::MatrixXd &ctrl_pts);
+    static void parameterizeToBspline(const double &ts,
+      const vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> &point_set,
+      const vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> &start_end_derivative,
+      Eigen::MatrixXd *ctrl_pts);
 
     /* check feasibility, adjust time */
 

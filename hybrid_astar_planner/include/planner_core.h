@@ -211,8 +211,6 @@ class HybridAStarPlanner : public nav_core::BaseGlobalPlanner {
         bool use_hybrid_astar;
         std::vector<HybridAStartResult> partition_trajectories;
         // std::vector<std::pair<VecCube, VecCube>> corridors;
-        std::vector<VecCube> corridors;
-        VecCube connected_corridors;
         Cube lstcube;
         double delta_t_ = 0.0;
         std::pair<bool, bool> gear_ = {false, false};

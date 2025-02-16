@@ -159,8 +159,8 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
   std::cout << "完成路径分割！" << std::endl;
 
   /* 生成安全走廊，并为安全走廊分配时间信息 */
-  corridors.clear();
-  connected_corridors.clear();
+  std::vector<VecCube> corridors;
+  VecCube connected_corridors;
   Timer time_bef_corridor; // 用于计算耗时
   int segment = 0; // 用于标记现在处理到哪段轨迹
   for (const auto & trajectory : partition_trajectories) // 为每段轨迹生成安全走廊
@@ -424,7 +424,6 @@ bool HybridAStarPlanner::GenerateSpeedAcceleration(HybridAStartResult* result)
   return true;
 } /* end of GenerateSpeedAcceleration */
 
-// std::pair<VecCube, VecCube> HybridAStarPlanner::corridorGeneration(const VectorVec3d &path_coord, int segment)
 VecCube HybridAStarPlanner::corridorGeneration(const VectorVec3d &path_coord, int segment)
 {
   VecCube SmoothPathcubeList;

@@ -49,6 +49,10 @@ int main(int argc, char** argv) {
     tf2_ros::TransformListener tf(buffer);                                      
     TestPlanner test( buffer );
 
-    ros::spin();
+    ros::Rate rate(10.0);
+    while (ros::ok()) {
+        ros::spinOnce();
+        rate.sleep();
+    }
     return 0;
 }

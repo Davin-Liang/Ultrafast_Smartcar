@@ -49,7 +49,7 @@ bool hybridAstar::calculatePath(
     const geometry_msgs::PoseStamped& start, 
     const geometry_msgs::PoseStamped& goal,
     int cellsX, int cellsY, std::vector<geometry_msgs::PoseStamped>& plan,
-    ros::Publisher& pub, visualization_msgs::MarkerArray& pathNodes) 
+    ros::Publisher& pub, visualization_msgs::MarkerArray& AstarpathNodes) 
 {
   #ifdef debug_mode
   ros::Time t0 = ros::Time::now();
@@ -123,7 +123,7 @@ bool hybridAstar::calculatePath(
     tmpNode = openSet.top(); // 根据混合A*算法，取堆顶的元素作为下查找节点
 
     #ifdef SearchingVisulize
-    publishSearchNodes(*tmpNode, pub, pathNodes,counter);
+    publishSearchNodes(*tmpNode, pub, AstarpathNodes, counter);
     #endif
 
     openSet.pop(); // 出栈

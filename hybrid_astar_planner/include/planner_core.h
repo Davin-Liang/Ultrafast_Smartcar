@@ -125,13 +125,6 @@ class HybridAStarPlanner : public nav_core::BaseGlobalPlanner {
         
     private:
         /**
-         * @brief Clarn the visualization_msgs::Marker 清理可视化信息的标记点
-         */
-        void clearPathNodes(void);
-
-
-
-        /**
          * @brief Check whethe the start pose is available
          * @param start A reference to start pose
          * @return True if the start pose is available
@@ -205,7 +198,6 @@ class HybridAStarPlanner : public nav_core::BaseGlobalPlanner {
 
         /* 内部变量 */
         visualization_msgs::MarkerArray corridor_array;
-        visualization_msgs::MarkerArray pathNodes;//节点数据结构，用于可视化
         double resolution;
         ros::ServiceServer make_plan_srv_;
         bool use_hybrid_astar;

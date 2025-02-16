@@ -135,13 +135,14 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
   }
   plan.clear(); // 清除先前规划得到的路径
   /* 正式将参数传入规划器中 */
+  visualization_msgs::MarkerArray AstarpathNodes;
   if( !_planner->calculatePath(start, 
                               goal, 
                               costmap->getSizeInCellsX(), 
                               costmap->getSizeInCellsY(), 
                               plan, 
                               path_vehicles_pub_, 
-                              pathNodes) ) 
+                              AstarpathNodes) ) 
   {
     return false; // 代表规划失败
   }
@@ -262,7 +263,6 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
   std::cout << "length in optimization is: " << b_spline_length <<" m"<< std::endl;
 
   /* 参数后期处理，发布到RViz上进行可视化 */
-  clearPathNodes();
   //path只能发布2D的节点
   publishPlan(plan); // 发布初始的全局规划路径
   publishPathNodes(plan);

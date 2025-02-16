@@ -72,6 +72,17 @@ void HybridAStarPlanner::publishPathNodes(const std::vector<geometry_msgs::PoseS
             "This planner has not been initialized yet, but it is being used, please call initialize() before use");
     return;
   }
+
+  visualization_msgs::MarkerArray pathNodes;//节点数据结构，用于可视化
+  
+  visualization_msgs::Marker node;
+  node.action = visualization_msgs::Marker::DELETEALL;
+  node.header.frame_id = frame_id_;
+  node.header.stamp = ros::Time(0);
+  node.id = 0;
+  node.action = 3;
+  pathNodes.markers.push_back(node);
+
   visualization_msgs::Marker pathVehicle;
   int nodeSize = path.size();
   pathVehicle.header.stamp = ros::Time(0);
@@ -96,21 +107,7 @@ void HybridAStarPlanner::publishPathNodes(const std::vector<geometry_msgs::PoseS
     
 }//end of publishPathNodes
 
-void HybridAStarPlanner::clearPathNodes() {
-  // 初始化并配置节点为全清空模式
-  visualization_msgs::Marker node;
-  pathNodes.markers.clear();
-  node.action = visualization_msgs::Marker::DELETEALL;
-  node.header.frame_id = frame_id_;
-  node.header.stamp = ros::Time(0);
-  node.id = 0;
-  node.action = 3;
-  pathNodes.markers.push_back(node);
-  path_vehicles_pub_.publish(pathNodes);
-  // ROS_INFO("Clean the path nodes");
-}
-
- void publishSearchNodes(Node3D node,ros::Publisher& pub, 
+void publishSearchNodes(Node3D node,ros::Publisher& pub, 
     visualization_msgs::MarkerArray& pathNodes, int i) {
   visualization_msgs::Marker pathVehicle;
   pathVehicle.header.stamp = ros::Time(0);

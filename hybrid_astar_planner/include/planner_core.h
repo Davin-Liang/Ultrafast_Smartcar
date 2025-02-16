@@ -167,7 +167,6 @@ class HybridAStarPlanner : public nav_core::BaseGlobalPlanner {
          * @param segment 轨迹编号
          * @return 安全走廊
         */      
-        // std::pair<VecCube, VecCube> corridorGeneration(const VectorVec3d &path_coord, int segment);
         VecCube corridorGeneration(const VectorVec3d &path_coord, int segment);
 
         /**

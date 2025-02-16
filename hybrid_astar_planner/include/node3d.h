@@ -8,7 +8,7 @@ class Node3D
 public:
     Node3D(): Node3D(0, 0, 0, 999, 0, false, nullptr) {}
     Node3D(float _x , float _y, float t, float _g = 999, float _h = 0, bool _reverse = false, Node3D* _perd = nullptr):
-    x(_x), y(_y), g(_g), h(_h), reverse(_reverse), perd(_perd), o(false), c(false)
+    x(_x), y(_y), g(_g), h(_h), o(false), c(false), reverse(_reverse), perd(_perd)
     {
         setT(t);
         index = -1;

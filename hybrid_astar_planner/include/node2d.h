@@ -11,11 +11,11 @@ class Node2D
 public:
     Node2D(): Node2D(0, 0, 999, 0, nullptr) {}
     Node2D(int _x , int _y, float _g = 999, float _h = 0, Node2D* _perd = nullptr):
-    x(_x), y(_y), g(_g), h(_h), perd(_perd), o(false), c(false)
+    x(_x), y(_y), g(_g), h(_h), o(false), c(false), perd(_perd)
     {
         index = -1;
     }
-    ~Node2D(){}
+    ~Node2D()=default;
     
     void setX(int _x) { x = _x; }
     void setY(int _y) { y = _y; }
@@ -25,7 +25,7 @@ public:
     void setClosedSet() { c = true; o = false; }
     void setOpenSet() { o = true; }
     void setPerd(Node2D* _perd) { perd = _perd; }
-    void setPerd_(std::shared_ptr<Node2D> _perd) { perd_node = _perd; }
+    void setPerd_(std::shared_ptr<Node2D> _perd) { perd = _perd.get(); }
     int getX(void) { return x; }
     int getY(void) { return y; }
     float getF(void) const { return g + h; }
@@ -62,7 +62,6 @@ public:
         bool d;
         /// the predecessor pointer
         Node2D* perd;
-        std::shared_ptr<Node2D> perd_node = nullptr;
 };
 
 class GridSearch {

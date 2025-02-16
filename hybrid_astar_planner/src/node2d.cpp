@@ -52,6 +52,7 @@ float Node2D::calcH(Node2D const *goal) {
   dx = abs(x - goal->x);
   dy = abs(y - goal->y);
   h = dx + dy;
+  return h;
 }
 
 std::unordered_map<int, std::shared_ptr<Node2D>> GridSearch::GenerateDpMap(

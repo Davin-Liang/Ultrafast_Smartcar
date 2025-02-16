@@ -42,7 +42,6 @@
 TestPlanner::TestPlanner(tf2_ros::Buffer &_tf):
 tf(_tf){
     //订阅目标主题，绑定响应函数,这里使用suscribe订阅目标点，当目标点刷新就重新进行路径规划
-    make_plane = n.subscribe("/move_base_simple/goal", 5, &TestPlanner::setgoal, this);
     //定义类插件的名称，以便之后接入系统
     global_planner = std::string("hybrid_astar_planner/HybridAStarPlanner");    
     // ros::NodeHandle nh("~/global_costmap");
@@ -68,6 +67,7 @@ tf(_tf){
       ROS_FATAL("Failed to create the %s planner, are you sure it is properly registered and that the containing library is built? Exception: %s", global_planner.c_str(), ex.what());
       exit(1);
     }
+    make_plane = n.subscribe("/move_base_simple/goal", 5, &TestPlanner::setgoal, this);
 }
 void TestPlanner::setgoal(const geometry_msgs::PoseStamped::ConstPtr& _goal) {
     std::cout << "receved the goal pose" <<std::endl;

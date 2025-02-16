@@ -211,7 +211,11 @@ bool hybridAstar::calculatePath(
         open_set.emplace(iPred, point);
         costmap->worldToMap(point->getX(), point->getY(), start_x, start_y);
         /* 计算启发式代价 h（如欧氏距离或势场值），此处使用预计算的 dp_map（Dijkstra势场）加速 */
-        updateH(*point, *goalPose, NULL, NULL, cells_x, cells_y, dp_map[start_y * cellsX + start_x]->getG()/20);
+        double dp_map_g_cost = 10000;
+        if (dp_map.find(start_y * cellsX + start_x) != dp_map.end()) {
+          dp_map_g_cost=dp_map[start_y * cellsX + start_x]->getG()/20;
+        }
+        updateH(*point, *goalPose, NULL, NULL, cells_x, cells_y, dp_map_g_cost);
         openSet.push(point);    // 如果符合拓展点要求，则将此点加入优先队列中 
       }
     }

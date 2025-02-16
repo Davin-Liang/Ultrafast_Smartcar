@@ -193,7 +193,7 @@ class HybridAStarPlanner : public nav_core::BaseGlobalPlanner {
 
         std::pair<bool,bool> CheckGear(const struct HybridAStartResult &trajectory);
 
-        void publishPlan_bspline(const vector<Eigen::Vector3d>& path, ros::Publisher pub);
+        void publishPlan_bspline(const vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>& path);
         void publishPathFromCtrlPts(const Eigen::MatrixXd& ctrl_pts);
 
         /* 内部变量 */
@@ -207,7 +207,6 @@ class HybridAStarPlanner : public nav_core::BaseGlobalPlanner {
         double delta_t_ = 0.0;
         std::pair<bool, bool> gear_ = {false, false};
         opt_planner::BsplineOptimizer::Ptr bspline_optimizer_rebound_;
-        vector<Eigen::Vector3d> BSplineSmooth_set;
         // PlanParameters pp_; // 统一管理参数的结构体
 };
 

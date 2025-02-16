@@ -192,10 +192,8 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
   /* ----------------------------------------------------------------------------------------------- */
   vector<Eigen::Vector3d> start_end_derivatives;
   double total_opt_time = 0.0;
-
-  BSplineSmooth_set.clear();
-
-  for (int i = 0; i < partition_trajectories.size(); i++)
+  vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> BSplineSmooth_set;
+  for (int i = 0; i < partition_trajectories.size(); ++i)
   {
     vector<Eigen::Vector3d> point_set;
     double start_angle, end_angle, distance;
@@ -251,14 +249,13 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
     }
   }
   std::cout << "成功优化所有路径样本路径" << std::endl;
+  
   double b_spline_length = 0;
-  std::vector<std::pair<double, double>> bspline;
   std::cout << " B 样条优化后的路径点一共有 " << BSplineSmooth_set.size() << " 个！" << std::endl;
-  for(int i = 0; i < BSplineSmooth_set.size(); i++)
+  for(size_t i = 0; i < BSplineSmooth_set.size(); ++i)
   {
     if (i < BSplineSmooth_set.size() - 1)
       b_spline_length += (BSplineSmooth_set[i+1].head(2) - BSplineSmooth_set[i].head(2)).norm(); // 计算优化后的路径的长度
-    bspline.emplace_back(BSplineSmooth_set[i](0), BSplineSmooth_set[i](1));
   }
   std::cout << "length in optimization is: " << b_spline_length <<" m"<< std::endl;
 
@@ -266,7 +263,7 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
   //path只能发布2D的节点
   publishPlan(plan); // 发布初始的全局规划路径
   publishPathNodes(plan);
-  publishPlan_bspline(BSplineSmooth_set, plan_pub_bspline); // 发布 B 样条优化后的路径
+  publishPlan_bspline(BSplineSmooth_set); // 发布 B 样条优化后的路径
   return true; // 代表规划成功
 } /* end of makeplan */
 
@@ -901,20 +898,26 @@ std::pair<bool,bool> HybridAStarPlanner::CheckGear(const struct HybridAStartResu
   return {ini_gear, end_gear};
 }
 
-void HybridAStarPlanner::publishPlan_bspline(const vector<Eigen::Vector3d>& path, ros::Publisher pub) 
+void HybridAStarPlanner::publishPlan_bspline(const vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>& path) 
 {
   nav_msgs::Path nav_path;
   geometry_msgs::PoseStamped pose_stamped;
-  int index = 0;
 
-  for (const auto &pose: path) 
-  {
+  for (size_t index = 0; index < path.size(); ++index) {
+    const auto &pose= path[index];
     double head_angle = path[index].z();
-    const Eigen::Vector2d init_tracking_vector(
-        path[index+1].x() - path[index].x(),
-        path[index+1].y() - path[index].y()
-    );
-    double tracking_angle = std::atan2(init_tracking_vector.y(), init_tracking_vector.x());
+    double tracking_angle;
+    if (index + 1 < path.size()) {
+      double diff_x = path[index+1].x() - path[index].x();
+      double diff_y = path[index+1].y() - path[index].y();
+      tracking_angle = std::atan2(diff_y, diff_x);
+    } else {
+      if (nav_path.poses.empty()) {
+        tracking_angle = head_angle;
+      } else {
+        tracking_angle = nav_path.poses.back().pose.position.z;
+      }
+    }
     int gear = 
       std::abs(common::math::NormalizeAngle(tracking_angle - head_angle)) <
       (M_PI_2)? 1 : 0;
@@ -926,14 +929,12 @@ void HybridAStarPlanner::publishPlan_bspline(const vector<Eigen::Vector3d>& path
     pose_stamped.pose.orientation = tf::createQuaternionMsgFromYaw(pose.z());//创建四元数
 
     nav_path.poses.emplace_back(pose_stamped);
-
-    index ++;
   }
 
   nav_path.header.frame_id = "map";
   nav_path.header.stamp = ros::Time::now();
 
-  pub.publish(nav_path);
+  plan_pub_bspline.publish(nav_path);
 }
 
 void HybridAStarPlanner::publishPathFromCtrlPts(const Eigen::MatrixXd& ctrl_pts) 

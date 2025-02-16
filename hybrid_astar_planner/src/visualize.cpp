@@ -48,14 +48,13 @@ void HybridAStarPlanner::publishPlan(const std::vector<geometry_msgs::PoseStampe
   //create a message for the plan
   geometry_msgs::PoseStamped transform_path;
   nav_msgs::Path gui_path;
-  int size = path.size();
-  gui_path.poses.resize(size);
+  gui_path.poses.resize(path.size());
 
   gui_path.header.frame_id = frame_id_;
   gui_path.header.stamp = ros::Time::now();
 
   // Extract the plan in world co-ordinates, we assume the path is all in the same frame
-  for (unsigned int i = 0; i < size; i++) {
+  for (size_t i = 0; i < path.size(); ++i) {
     transform_path.pose.position = path[i].pose.position;
     gui_path.poses[i] = transform_path;//
   }
@@ -84,7 +83,6 @@ void HybridAStarPlanner::publishPathNodes(const std::vector<geometry_msgs::PoseS
   pathNodes.markers.push_back(node);
 
   visualization_msgs::Marker pathVehicle;
-  int nodeSize = path.size();
   pathVehicle.header.stamp = ros::Time(0);
   pathVehicle.color.r = 52.f / 255.f;
   pathVehicle.color.g = 250.f / 255.f;
@@ -96,7 +94,7 @@ void HybridAStarPlanner::publishPathNodes(const std::vector<geometry_msgs::PoseS
   pathVehicle.scale.z = 0.12;
   pathVehicle.color.a = 0.1;
   // 转化节点，并同时加上时间戳等信息
-  for(int i = 0; i<nodeSize; i++) {
+  for(size_t i = 0; i< path.size(); ++i) {
     pathVehicle.header.stamp = ros::Time(0);
     pathVehicle.pose = path[i].pose;
     pathVehicle.id = i;

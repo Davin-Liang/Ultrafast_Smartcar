@@ -33,10 +33,10 @@ TebLocalPlannerROS:
   publish_feedback: False
 
   # Robot
-  max_vel_x: 2.5
+  max_vel_x: 0.6
   max_vel_x_backwards: 1
   max_vel_theta: 3.5
-  acc_lim_x: 2.5
+  acc_lim_x: 1.0
   acc_lim_theta: 3.5
 
   #仅适用于全向轮

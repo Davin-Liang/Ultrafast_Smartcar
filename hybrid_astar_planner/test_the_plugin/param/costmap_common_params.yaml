@@ -33,9 +33,9 @@ obstacle_layer:
   track_unknown_space: true
   combination_method: 1
 
-  obstacle_range: 6.5
+  obstacle_range: 6.0
   raytrace_range: 6.0
-  max_clearing_distance: 6.5
+  max_clearing_distance: 8.5
 
   observation_sources: scan
   scan: {

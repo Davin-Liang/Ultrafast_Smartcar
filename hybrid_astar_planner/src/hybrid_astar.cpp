@@ -55,68 +55,60 @@ bool hybridAstar::calculatePath(
   ros::Time t0 = ros::Time::now();
   #endif
 
-  // 初始化优先队列，未来改善混合A*算法性能，这里使用的是二项堆优先队列
-  boost::heap::binomial_heap<Node3D*,boost::heap::compare<CompareNodes>> openSet;
+  /* 初始化优先队列，未来改善混合A*算法性能，这里使用的是二项堆优先队列 */
+  boost::heap::binomial_heap<Node3D*, boost::heap::compare<CompareNodes>> openSet;
   /* 初始化并创建一些参数 */
   const unsigned char* charMap = costmap->getCharMap(); // charMap中存储的是地图的障碍物信息
-
-  /****************************************************************
-  * 分辨率太高会导致混合A*计算量过高，且意义不大, 因此
-  * 这里把resolution写死，由于本人能力有限暂时此功，其实是无奈之举，
-  * 未来需要在后续的代码中加入能够自动调节分辨率的功能，增加代码鲁棒性
-  ****************************************************************/
-  float resolution = 0.2;//costmap->getResolution() 0.125
   unsigned int originalX, originalY, goalX, goalY;
-  int cells_x,cells_y;
-  cells_x = cellsX / 2.5;
-  cells_y = cellsY / 2.5;
-  int counter = 0;
-  int dir;
-  int iPred, iSucc;
-  float t, g;
-  unsigned int dx,dy;
-  unsigned int goal_x, goal_y, start_x, start_y;
 
+  float g;
+
+  unsigned int dx, dy;
   costmap->worldToMap(0, 0, dx, dy);
   dx = dx / 2.5;
   dy = dy / 2.5;
   
-  t = tf::getYaw(start.pose.orientation); // t为目标点朝向
-  Node3D* startPose = new Node3D(start.pose.position.x, start.pose.position.y, t , 0, 0, false, nullptr);
+  float t;
+  t = tf::getYaw(start.pose.orientation); // t为起始点朝向
+  Node3D* startPose = new Node3D(start.pose.position.x, start.pose.position.y, t, 0, 0, false, nullptr);
 
+  unsigned int goal_x, goal_y, start_x, start_y;
   costmap->worldToMap(goal.pose.position.x, 
                       goal.pose.position.y, goal_x, goal_y);
   costmap->worldToMap(start.pose.position.x, 
                       start.pose.position.y, start_x, start_y);
-
-
   //************************************************
   // 建立启发势场取决于地图大小,231(nodes/ms)
   std::unordered_map<int, std::shared_ptr<Node2D>> dp_map = 
       grid_a_star_heuristic_generator_->GenerateDpMap(goal_x, goal_y, costmap); //todo    
-  ros::Time end_time = ros::Time::now();
 
   #ifdef debug_mode
+  ros::Time end_time = ros::Time::now();
   ros::Time t1 = ros::Time::now();
   ros::Duration d(end_time - t0);
   std::cout << "generate heuristic map costed " << d * 1000 << " ms" <<std::endl;
   #endif
 
   t = tf::getYaw(goal.pose.orientation);
-  Node3D* goalPose = new Node3D(goal.pose.position.x, goal.pose.position.y, t , 999, 0, false, nullptr);
+  Node3D* goalPose = new Node3D(goal.pose.position.x, goal.pose.position.y, t, 999, 0, false, nullptr);
   std::unordered_map<int, Node3D*> open_set;
   std::unordered_map<int, Node3D*> closed_set;
 
-  if (Constants::reverse)
-    dir = 6;
-  else
-    dir = 3;
+  int dir;
+  if (Constants::reverse) dir = 6;
+  else dir = 3;
 
-  open_set.emplace(startPose->getindex(cells_x ,Constants::headings, resolution, dx, dy), startPose);
+  float resolution = 0.2;// 0.125
+  int cells_x,cells_y;
+  cells_x = cellsX / 2.5;
+  cells_y = cellsY / 2.5;
+  int iPred, iSucc;
+  open_set.emplace(startPose->getindex(cells_x, Constants::headings, resolution, dx, dy), startPose);
   openSet.push(startPose);
+
   Node3D* tmpNode;
   Node3D* nSucc;
-
+  int counter = 0;
   while (openSet.size() && counter < Constants::iterations) 
   {
     ++ counter;
@@ -137,6 +129,34 @@ bool hybridAstar::calculatePath(
 
       ROS_INFO("Got a plan,loop %d times", counter);
       nodeToPlan(tmpNode, plan);
+
+      /* 清除指针 */
+      // TODO:
+
+      // if (startPose != nullptr)
+      //   delete startPose;
+      // if (goalPose != nullptr)
+      //   delete goalPose;
+
+      for (auto& pair : open_set) 
+      {
+        if (pair.second != nullptr)
+          delete pair.second;
+      }
+      // for (auto& pair : closed_set) 
+      // {
+      //   if (pair.second != nullptr)
+      //     delete pair.second;
+      // }
+      // while (!openSet.empty()) 
+      // {
+      //     Node3D* node = openSet.top();  // 获取堆顶元素
+      //     openSet.pop();  // 弹出堆顶元素
+      //     if (node != nullptr)
+      //       delete node;  // 释放指针
+      // }
+
+
       return true;
     }
     else 
@@ -144,21 +164,6 @@ bool hybridAstar::calculatePath(
       if (Constants::dubinsShot && tmpNode->isInRange(*goalPose) && !tmpNode->isReverse()) 
       {
         nSucc = dubinsShot(*tmpNode, *goalPose, costmap);
-        //如果Dubins方法能直接命中，即不需要进入Hybrid A*搜索了，直接返回结果
-        if (nSucc != nullptr && reachGoal(nSucc, goalPose) ) {
-          #ifdef debug_mode
-          ros::Time t1 = ros::Time::now();
-          ros::Duration d(t1 - t0);
-          std::cout << "got plan in ms: " << d * 1000 << std::endl;
-          #endif
-          ROS_INFO("Got a plan,expored %d nodes ", counter);
-          nodeToPlan(nSucc, plan);
-          return true;//如果下一步是目标点，可以返回了
-        }
-      } 
-      else if(Constants::reedsSheppShot && tmpNode->isInRange(*goalPose) && !tmpNode->isReverse()) 
-      {
-        nSucc = reedsSheppShot(*tmpNode, *goalPose, costmap);
         //如果Dubins方法能直接命中，即不需要进入Hybrid A*搜索了，直接返回结果
         if (nSucc != nullptr && reachGoal(nSucc, goalPose)) 
         {
@@ -172,12 +177,55 @@ bool hybridAstar::calculatePath(
           nodeToPlan(nSucc, plan);
           return true;//如果下一步是目标点，可以返回了
         }
+      } 
+      else if(Constants::reedsSheppShot && tmpNode->isInRange(*goalPose) && !tmpNode->isReverse()) 
+      {
+        nSucc = reedsSheppShot(*tmpNode, *goalPose, costmap);
+        /* 如果Dubins方法能直接命中，即不需要进入Hybrid A*搜索了，直接返回结果 */
+        if (nSucc != nullptr && reachGoal(nSucc, goalPose)) 
+        {
+          #ifdef debug_mode
+          ros::Time t1 = ros::Time::now();
+          ros::Duration d(t1 - t0);
+          std::cout << "got plan in ms: " << d * 1000 << std::endl;
+          #endif
+
+          ROS_INFO("Got a plan,expored %d nodes ", counter);
+          nodeToPlan(nSucc, plan);
+
+          /* 清除指针 */
+          // if (startPose != nullptr)
+          //   delete startPose;
+          // if (goalPose != nullptr)
+          //   delete goalPose;
+
+          for (auto& pair : open_set) 
+          {
+            if (pair.second != nullptr)
+              delete pair.second;
+          }
+          // for (auto& pair : closed_set) 
+          // {
+          //   if (pair.second != nullptr)
+          //     delete pair.second;
+          // }
+          // while (!openSet.empty()) 
+          // {
+          //     Node3D* node = openSet.top();  // 获取堆顶元素
+          //     openSet.pop();  // 弹出堆顶元素
+          //     if (node != nullptr)
+          //       delete node;  // 释放指针
+          // }
+
+
+          return true; // 出口
+        }
       }
     }
 
-    // 拓展tmpNode临时点目标周围的点，并且使用STL标准库的向量链表进行存储拓展点Node3D的指针数据
+    /* 拓展tmpNode临时点目标周围的点 */
     std::vector<Node3D*> adjacentNodes = gatAdjacentPoints(dir, cellsX, cellsY, charMap, tmpNode);   
-    // 将 tmpNode点在pathNode3D中映射的点加入闭集合中
+    /* 将 tmpNode点在pathNode3D中映射的点加入闭集合中 */
     // 根据坐标和方向生成唯一索引
     closed_set.emplace(tmpNode->getindex(cells_x ,Constants::headings, resolution, dx, dy), tmpNode); // 将 tmpNode 标记为已处理，防止重复扩展
     /* 逐个检查相邻节点是否需加入开放集合 */
@@ -188,17 +236,14 @@ bool hybridAstar::calculatePath(
       iPred = point->getindex(cells_x, Constants::headings, resolution, dx, dy);
 
       /* 若相邻节点已在关闭集合中（已探索过），跳过处理 */
-      if (closed_set.find(iPred)!= closed_set.end()) 
-      {
-        continue;
-      }
+      if (closed_set.find(iPred)!= closed_set.end()) continue;
       g = point->calcG(); // 计算从起点到当前节点 point 的实际路径代价
 
       /* 处理已在开放集合中的节点 */
       // 若节点已在开放集合中且新代价更低，更新代价并重新入队
-      if(open_set.find(iPred) != open_set.end()) 
+      if (open_set.find(iPred) != open_set.end()) 
       {
-        if(g < open_set[iPred]->getG()) 
+        if (g < open_set[iPred]->getG()) 
         {
           point->setG(g);
           open_set[iPred]->setG(g); //  // 更新开放集合中的节点代价
@@ -212,7 +257,8 @@ bool hybridAstar::calculatePath(
         costmap->worldToMap(point->getX(), point->getY(), start_x, start_y);
         /* 计算启发式代价 h（如欧氏距离或势场值），此处使用预计算的 dp_map（Dijkstra势场）加速 */
         double dp_map_g_cost = 10000;
-        if (dp_map.find(start_y * cellsX + start_x) != dp_map.end()) {
+        if (dp_map.find(start_y * cellsX + start_x) != dp_map.end()) 
+        {
           dp_map_g_cost=dp_map[start_y * cellsX + start_x]->getG()/20;
         }
         updateH(*point, *goalPose, NULL, NULL, cells_x, cells_y, dp_map_g_cost);
@@ -230,47 +276,91 @@ std::vector<Node3D*> hybridAstar::gatAdjacentPoints(int dir, int cells_x,
   Node3D *tmpPtr;
   float xSucc;
   float ySucc;
-  float tSucc;
   unsigned int startX, startY;
-  float t = point->getT();
+  double move_step_size_ = 0.05;
   // int index;
-  float x = point->getX();
-  float y = point->getY();
-  unsigned int u32_x = int(x);
-  unsigned int u32_y = int(y);
+  // unsigned int u32_x = int(x);
+  // unsigned int u32_y = int(y);
+
   for (int i = 0; i < dir; i++) 
   {
-    if (i < 3) 
+    double x = point->getX();
+    double y = point->getY();
+    double t = point->getT();   
+    for (int j = 1; j <= 2; j++) // 
     {
-      xSucc = x + Constants::dx[i] * cos(t) - Constants::dy[i] * sin(t);
-      ySucc = y + Constants::dx[i] * sin(t) + Constants::dy[i] * cos(t);
-    } 
-    else 
-    {
-      xSucc = x - Constants::dx[i - 3] * cos(t) - Constants::dy[i - 3] * sin(t);
-      ySucc = y - Constants::dx[i - 3] * sin(t) + Constants::dy[i - 3] * cos(t);
-    }
-    if (costmap->worldToMap(xSucc, ySucc, startX, startY)) 
-    {
-
-      if (charMap[startX + startY * cells_x] < 250) 
+      /* 前向拓展 */
+      if (i < 3) 
       {
-        if (i < 3) 
-        {
-          tmpPtr = new Node3D(xSucc, ySucc, t + Constants::dt[i], 999, 0, false, point);
-          tmpPtr->setCost(charMap[startX + startY * cells_x]);
-        } 
-        else 
-        {
-          tmpPtr = new Node3D(xSucc, ySucc, t - Constants::dt[i - 3], 999, 0, true, point);
-          tmpPtr->setCost(charMap[startX + startY * cells_x]);
-        }
-        adjacentNodes.push_back(tmpPtr);
+        double phi = 0.0;
+        if (i == 0) phi = 9.0 * 3.14 / 180.0;
+        if (i == 1) phi = 0.0;
+        if (i == 2) phi = -9.0 * 3.14 / 180.0;
+        // xSucc = x + Constants::dx[i] * cos(t) - Constants::dy[i] * sin(t);
+        // ySucc = y + Constants::dx[i] * sin(t) + Constants::dy[i] * cos(t);
+        DynamicModel(move_step_size_, phi, x, y, t);
+      } 
+      else /* 后向拓展 */
+      {
+        double phi = 0.0;
+        if (i == 3) phi = 9.0 * 3.14 / 180.0;
+        if (i == 4) phi = 0.0;
+        if (i == 5) phi = -9.0 * 3.14 / 180.0;
+        // xSucc = x - Constants::dx[i - 3] * cos(t) - Constants::dy[i - 3] * sin(t);
+        // ySucc = y - Constants::dx[i - 3] * sin(t) + Constants::dy[i - 3] * cos(t);
+        DynamicModel(-move_step_size_, phi, x, y, t);
       }
+      /* 可行性检测 */
+      if (costmap->worldToMap(x, y, startX, startY)) 
+      {
+        if (charMap[startX + startY * cells_x] < 250) 
+        {
+          if (i < 3) 
+          {
+            tmpPtr = new Node3D(x, y, t, 999, 0, false, point);
+            tmpPtr->setCost(charMap[startX + startY * cells_x]);
+          } 
+          else 
+          {
+            tmpPtr = new Node3D(x, y, t, 999, 0, true, point);
+            tmpPtr->setCost(charMap[startX + startY * cells_x]);
+          }
+          adjacentNodes.push_back(tmpPtr);
+        }
+        else
+          break;
+      }
+      else
+        break;
     }
   }
 
   return adjacentNodes;
+}
+
+void hybridAstar::DynamicModel(const double &step_size, const double &phi,
+                               double &x, double &y, double &theta) const 
+{
+  x = x + step_size * std::cos(theta);
+  y = y + step_size * std::sin(theta);
+  theta = Mod2Pi(theta + step_size / 0.13 * std::tan(phi)); //TODO:
+}
+
+double hybridAstar::Mod2Pi(const double &x) {
+    double v = fmod(x, 2 * M_PI);
+  /*θ= 
+        θ+2π, −2π<θ<−π
+        θ−2π, π≤θ<2π
+        θ, −π≤θ<π
+        而且C++中的反三角函数给出的结果映射到了[-pi, pi]
+ */
+      if (v < -M_PI) {
+        v += 2.0 * M_PI;
+    } else if (v > M_PI) {
+        v -= 2.0 * M_PI;
+    }
+    
+    return v;
 }
 
 /* 判断当前节点 node 是否在位置（X, Y）和方向（T）上足够接近目标节点 goalPose，从而判定是否到达目标 */
@@ -305,21 +395,18 @@ void hybridAstar::nodeToPlan(Node3D* node, std::vector<geometry_msgs::PoseStampe
   Node3D* tmpPtr = node;
   geometry_msgs::PoseStamped tmpPose;
   std::vector<geometry_msgs::PoseStamped> replan;
-  // float resolution = costmap->getResolution();
-  unsigned int originalX, originalY;
 
   tmpPose.header.stamp = ros::Time::now();   
-  //参数后期处理，发布到RViz上进行可视化
 
   /* 从目标节点（node）反向回溯到起点 */
-  while (tmpPtr != nullptr) // // 遍历直到链表头部（起点）
+  while (tmpPtr != nullptr) // 遍历直到链表头部（起点）
   {
     tmpPose.pose.position.x = tmpPtr->getX();
     tmpPose.pose.position.y = tmpPtr->getY();
     tmpPose.header.frame_id = frame_id_;
     tmpPose.pose.orientation = tf::createQuaternionMsgFromYaw(tmpPtr->getT());
     replan.push_back(tmpPose);
-    tmpPtr = tmpPtr->getPerd(); // 移动到父节点
+    tmpPtr = tmpPtr->getPerd(); // 转移到父节点
   }
 
   /* 路径顺序反转 */

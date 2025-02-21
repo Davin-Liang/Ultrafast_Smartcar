@@ -183,7 +183,7 @@ class Nodelet : public nodelet::Nodelet
       else
         msg.linear.x = -abs(state_(3) + u(0) * 0.03);
 
-      msg.angular.z = u(1)*0.8;
+      msg.angular.z = u(1);
       cmd_pub_.publish(msg);     
       mpcPtr_->visualization();
     }
@@ -200,21 +200,34 @@ class Nodelet : public nodelet::Nodelet
     double roll, pitch, yaw;
     m.getRPY(roll, pitch, yaw);
 
-    geometry_msgs::PointStamped odom_point;
-    odom_point.header.frame_id = "odom";
-    odom_point.header.stamp = msg->header.stamp;
-    odom_point.point.x = msg->pose.pose.position.x;
-    odom_point.point.y = msg->pose.pose.position.y;
-    odom_point.point.z = msg->pose.pose.position.z;
+    // geometry_msgs::PointStamped odom_point;
+    // odom_point.header.frame_id = "odom";
+    // odom_point.header.stamp = msg->header.stamp;
+    // odom_point.point.x = msg->pose.pose.position.x;
+    // odom_point.point.y = msg->pose.pose.position.y;
+    // odom_point.point.z = msg->pose.pose.position.z;
+
+    geometry_msgs::PointStamped base_point;
+    base_point.header.frame_id = "base_link";
+    base_point.header.stamp = msg->header.stamp;
+    base_point.point.x = -0.065;
+    base_point.point.y = 0;
+    base_point.point.z = 0;
 
     geometry_msgs::PointStamped map_point;
     try 
     {
+      // // 查询从 odom 到 map 的变换
+      // geometry_msgs::TransformStamped transform_stamped = tf_buffer_.lookupTransform(
+      //     "map", "odom", ros::Time(0), ros::Duration(3.0));
+      // // 转换坐标
+      // tf2::doTransform(odom_point, map_point, transform_stamped);
+
       // 查询从 odom 到 map 的变换
       geometry_msgs::TransformStamped transform_stamped = tf_buffer_.lookupTransform(
-          "map", "odom", ros::Time(0), ros::Duration(3.0));
+          "map", "base_link", ros::Time(0), ros::Duration(3.0));
       // 转换坐标
-      tf2::doTransform(odom_point, map_point, transform_stamped);
+      tf2::doTransform(base_point, map_point, transform_stamped);
     } catch (tf2::TransformException& ex) 
     {
       NODELET_WARN("Could not transform odom to map: %s", ex.what());

@@ -1,6 +1,6 @@
 <launch>
 
-    <node name="move_base" pkg="hybrid_astar_planner" type="test_planner" output="screen" launch-prefix="gdb --args">
+    <node name="move_base" pkg="hybrid_astar_planner" type="test_planner" output="screen">
     <!-- <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen"> -->
         <rosparam file="$(find hybrid_astar_planner)/test_the_plugin/param/costmap_common_params.yaml" command="load" ns="global_costmap" /> 
         <rosparam file="$(find hybrid_astar_planner)/test_the_plugin/param/costmap_common_params.yaml" command="load" ns="local_costmap" />

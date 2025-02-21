@@ -78,6 +78,20 @@ class hybridAstar : public Expander
      * @param plan the refrence of plan
     */
     void nodeToPlan(Node3D* node, std::vector<geometry_msgs::PoseStamped>& plan);
+
+    /*!
+     * Simplified car model. Center of the rear axle
+     * refer to: http://planning.cs.uiuc.edu/node658.html
+     * @param step_size Length of discrete steps
+     * @param phi Car steering angle
+     * @param x Car position (world frame)
+     * @param y Car position (world frame)
+     * @param theta Car yaw (world frame)
+     */
+    inline void DynamicModel(const double &step_size, const double &phi, double &x, double &y, double &theta) const;
+    static inline double Mod2Pi(const double &x);
+
+
     std::unique_ptr<GridSearch> grid_a_star_heuristic_generator_;
 };
 

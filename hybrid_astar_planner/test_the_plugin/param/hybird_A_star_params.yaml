@@ -1,0 +1,4 @@
+HybirdAStar:
+  move_step_size: 0.05
+  segment_length_discrete_num: 2
+  steering_angle: 9.0

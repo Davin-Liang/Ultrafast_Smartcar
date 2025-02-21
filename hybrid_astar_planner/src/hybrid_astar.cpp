@@ -45,6 +45,12 @@
 // #define debug_mode
 namespace hybrid_astar_planner {
 
+// hybridAstar::hybridAstar(std::string frame_id, costmap_2d::Costmap2D* _costmap)
+// :Expander(frame_id, _costmap) 
+// {
+//   int a = 1;
+// }
+
 bool hybridAstar::calculatePath(
     const geometry_msgs::PoseStamped& start, 
     const geometry_msgs::PoseStamped& goal,
@@ -277,7 +283,7 @@ std::vector<Node3D*> hybridAstar::gatAdjacentPoints(int dir, int cells_x,
   float xSucc;
   float ySucc;
   unsigned int startX, startY;
-  double move_step_size_ = 0.05;
+  // double move_step_size_ = 0.05;
   // int index;
   // unsigned int u32_x = int(x);
   // unsigned int u32_y = int(y);
@@ -287,15 +293,15 @@ std::vector<Node3D*> hybridAstar::gatAdjacentPoints(int dir, int cells_x,
     double x = point->getX();
     double y = point->getY();
     double t = point->getT();   
-    for (int j = 1; j <= 2; j++) // 
+    for (int j = 1; j <= segment_length_discrete_num_; j++) // 
     {
       /* 前向拓展 */
       if (i < 3) 
       {
         double phi = 0.0;
-        if (i == 0) phi = 9.0 * 3.14 / 180.0;
+        if (i == 0) phi = steering_angle_ * 3.14 / 180.0;
         if (i == 1) phi = 0.0;
-        if (i == 2) phi = -9.0 * 3.14 / 180.0;
+        if (i == 2) phi = -steering_angle_ * 3.14 / 180.0;
         // xSucc = x + Constants::dx[i] * cos(t) - Constants::dy[i] * sin(t);
         // ySucc = y + Constants::dx[i] * sin(t) + Constants::dy[i] * cos(t);
         DynamicModel(move_step_size_, phi, x, y, t);
@@ -303,9 +309,9 @@ std::vector<Node3D*> hybridAstar::gatAdjacentPoints(int dir, int cells_x,
       else /* 后向拓展 */
       {
         double phi = 0.0;
-        if (i == 3) phi = 9.0 * 3.14 / 180.0;
+        if (i == 3) phi = steering_angle_ * 3.14 / 180.0;
         if (i == 4) phi = 0.0;
-        if (i == 5) phi = -9.0 * 3.14 / 180.0;
+        if (i == 5) phi = -steering_angle_ * 3.14 / 180.0;
         // xSucc = x - Constants::dx[i - 3] * cos(t) - Constants::dy[i - 3] * sin(t);
         // ySucc = y - Constants::dx[i - 3] * sin(t) + Constants::dy[i - 3] * cos(t);
         DynamicModel(-move_step_size_, phi, x, y, t);

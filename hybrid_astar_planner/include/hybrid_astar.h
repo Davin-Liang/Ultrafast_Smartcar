@@ -21,7 +21,14 @@ class hybridAstar : public Expander
     */
     hybridAstar(std::string frame_id, costmap_2d::Costmap2D* _costmap)
     :Expander(frame_id, _costmap) {
+        // double my_param = 0.0;
+        ros::NodeHandle nh("~/");
+        // nh.getParam("HybirdAStar/my_param", my_param);
+        nh.getParam("HybirdAStar/move_step_size", move_step_size_);
+        nh.getParam("HybirdAStar/segment_length_discrete_num", segment_length_discrete_num_);
+        nh.getParam("HybirdAStar/steering_angle", steering_angle_);
 
+        // std::cout << "my_param = " << my_param << std::endl;
     }
 
     /**
@@ -93,6 +100,10 @@ class hybridAstar : public Expander
 
 
     std::unique_ptr<GridSearch> grid_a_star_heuristic_generator_;
+
+    double move_step_size_ = 0.0;
+    int segment_length_discrete_num_ = 0;
+    double steering_angle_ = 0.0;
 };
 
 

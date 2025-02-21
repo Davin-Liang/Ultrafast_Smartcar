@@ -146,8 +146,14 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
                               path_vehicles_pub_, 
                               AstarpathNodes) ) 
   {
+    if (_planner != nullptr)
+      delete _planner;
+
     return false; // 代表规划失败
   }
+
+  if (_planner != nullptr)
+    delete _planner;
 
   std::cout << "规划出来的初始全局路径一共有 " << plan_.size() << " 个轨迹点！" << std::endl;
 
@@ -186,7 +192,7 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
   std::cout << "成功合并走廊！" << std::endl;
   std::cout << "Time consume in corridor generation is: " << time_bef_corridor.End() <<" ms."<< std::endl;
 
-  //PublishCorridor(connected_corridors); // 发布安全走廊
+  PublishCorridor(connected_corridors); // 发布安全走廊
 
   /* ----------------------------------------------------------------------------------------------- */
   /* -------------------------------------------B 样条优化------------------------------------------- */

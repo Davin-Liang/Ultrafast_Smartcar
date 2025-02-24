@@ -25,7 +25,7 @@ struct CompareNodes {
   }
 };
 Node3D* dubinsShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costmap);
-Node3D* reedsSheppShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costmap);
+Node3D* reedsSheppShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costmap, double turning_radius, double ReedsSheppStepSize);
 void  updateH(Node3D& start, const Node3D& goal, Node2D* nodes2D, float* dubinsLookup, int width, int height, float inspireAstar);
 }
 

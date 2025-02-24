@@ -101,7 +101,7 @@ bool hybridAstar::calculatePath(
   std::unordered_map<int, Node3D*> closed_set;
 
   int dir;
-  if (Constants::reverse) dir = 6;
+  if (reverse_) dir = 6;
   else dir = 3;
 
   float resolution = 0.2;// 0.125
@@ -115,7 +115,7 @@ bool hybridAstar::calculatePath(
   Node3D* tmpNode;
   Node3D* nSucc;
   int counter = 0;
-  while (openSet.size() && counter < Constants::iterations) 
+  while (openSet.size() && counter < iterations_) 
   {
     ++ counter;
     tmpNode = openSet.top(); // 根据混合A*算法，取堆顶的元素作为下查找节点
@@ -184,9 +184,9 @@ bool hybridAstar::calculatePath(
           return true;//如果下一步是目标点，可以返回了
         }
       } 
-      else if(Constants::reedsSheppShot && tmpNode->isInRange(*goalPose) && !tmpNode->isReverse()) 
+      else if(reedsSheppShot_ && tmpNode->isInRange(*goalPose) && !tmpNode->isReverse()) 
       {
-        nSucc = reedsSheppShot(*tmpNode, *goalPose, costmap);
+        nSucc = reedsSheppShot(*tmpNode, *goalPose, costmap, turning_radius_, ReedsSheppStepSize_);
         /* 如果Dubins方法能直接命中，即不需要进入Hybrid A*搜索了，直接返回结果 */
         if (nSucc != nullptr && reachGoal(nSucc, goalPose)) 
         {
@@ -349,10 +349,11 @@ void hybridAstar::DynamicModel(const double &step_size, const double &phi,
 {
   x = x + step_size * std::cos(theta);
   y = y + step_size * std::sin(theta);
-  theta = Mod2Pi(theta + step_size / 0.13 * std::tan(phi)); //TODO:
+  theta = Mod2Pi(theta + step_size / wheel_base_ * std::tan(phi)); //TODO:
 }
 
-double hybridAstar::Mod2Pi(const double &x) {
+double hybridAstar::Mod2Pi(const double &x) 
+{
     double v = fmod(x, 2 * M_PI);
   /*θ= 
         θ+2π, −2π<θ<−π

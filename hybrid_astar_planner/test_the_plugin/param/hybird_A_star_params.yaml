@@ -1,4 +1,10 @@
 HybirdAStar:
-  move_step_size: 0.05
+  reverse: True
+  iterations: 30000 # 迭代次数
+  move_step_size: 0.05 # 移动步长
   segment_length_discrete_num: 2
   steering_angle: 9.0
+  wheel_base: 0.13 # 轴间距
+  turning_radius: 1.0
+  ReedsSheppStepSize: 0.088
+  reedsSheppShot: True

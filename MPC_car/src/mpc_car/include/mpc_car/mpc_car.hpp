@@ -132,7 +132,7 @@ class MpcCar {
     else
       phi = atan2(dy, dx) - M_PI; /* 在这里实现倒车 */
     
-    if (s0 >= s_.arcL()) // 如果进度已经完成，就将车停下
+    if (s0 >= s_.arcL()*0.98) // 如果进度已经完成，就将车停下
     {
       v = 0.0;
       delta = 0.0;

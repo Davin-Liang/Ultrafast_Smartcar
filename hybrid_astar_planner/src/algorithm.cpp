@@ -156,9 +156,9 @@ Node3D* dubinsShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costmap) 
   return &dubinsNodes[i - 1];
 }
 
-Node3D* reedsSheppShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costmap) 
+Node3D* reedsSheppShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costmap, double turning_radius, double ReedsSheppStepSize) 
 {
-  ReedsSheppStateSpace rs_planner(Constants::r);
+  ReedsSheppStateSpace rs_planner(turning_radius);
   double length = -1;
   unsigned int poseX, poseY;
   // start
@@ -166,8 +166,8 @@ Node3D* reedsSheppShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costm
   // goal
   double q1[] = { goal.getX(), goal.getY(), goal.getT() };
   std::vector<std::vector<double> > rs_path;
-  rs_planner.sample(q0, q1, Constants::dubinsStepSize, length, rs_path);
-  Node3D* dubinsNodes = new Node3D [(int)(length / Constants::dubinsStepSize) + 1];
+  rs_planner.sample(q0, q1, ReedsSheppStepSize, length, rs_path);
+  Node3D* dubinsNodes = new Node3D [(int)(length / ReedsSheppStepSize) + 1];
   int i = 0;
   dubinsNodes[1].setPerd(&start);
   for (auto &point_itr : rs_path) 

@@ -23,10 +23,15 @@ class hybridAstar : public Expander
     :Expander(frame_id, _costmap) {
         // double my_param = 0.0;
         ros::NodeHandle nh("~/");
-        // nh.getParam("HybirdAStar/my_param", my_param);
+        nh.getParam("HybirdAStar/reverse", reverse_);
+        nh.getParam("HybirdAStar/iterations", iterations_);
         nh.getParam("HybirdAStar/move_step_size", move_step_size_);
         nh.getParam("HybirdAStar/segment_length_discrete_num", segment_length_discrete_num_);
         nh.getParam("HybirdAStar/steering_angle", steering_angle_);
+        nh.getParam("HybirdAStar/wheel_base", wheel_base_);
+        nh.getParam("HybirdAStar/turning_radius", turning_radius_);
+        nh.getParam("HybirdAStar/ReedsSheppStepSize", ReedsSheppStepSize_);
+        nh.getParam("HybirdAStar/reedsSheppShot", reedsSheppShot_);
 
         // std::cout << "my_param = " << my_param << std::endl;
     }
@@ -104,6 +109,12 @@ class hybridAstar : public Expander
     double move_step_size_ = 0.0;
     int segment_length_discrete_num_ = 0;
     double steering_angle_ = 0.0;
+    double wheel_base_ = 0.0;
+    double turning_radius_ = 0.0;
+    double ReedsSheppStepSize_ = 0.0;
+    bool reedsSheppShot_ = true;
+    bool reverse_ = true;
+    int iterations_ = 0;
 };
 
 

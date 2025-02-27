@@ -109,7 +109,7 @@ bool hybridAstar::calculatePath(
   cells_x = cellsX / 2.5;
   cells_y = cellsY / 2.5;
   int iPred, iSucc;
-  open_set.emplace(startPose->getindex(cells_x, Constants::headings, resolution, dx, dy), startPose);
+  open_set.emplace(startPose->getindex(cells_x, heading_, resolution, dx, dy), startPose);
   openSet.push(startPose);
 
   Node3D* tmpNode;
@@ -121,7 +121,7 @@ bool hybridAstar::calculatePath(
     tmpNode = openSet.top(); // 根据混合A*算法，取堆顶的元素作为下查找节点
 
     #ifdef SearchingVisulize
-    publishSearchNodes(*tmpNode, pub, AstarpathNodes, counter);
+    publishSearchNodes(*tmpNode, pub, AstarpathNodes, counter, deltaHeadingRad_);
     #endif
 
     openSet.pop(); // 出栈
@@ -167,9 +167,9 @@ bool hybridAstar::calculatePath(
     }
     else 
     {
-      if (Constants::dubinsShot && tmpNode->isInRange(*goalPose) && !tmpNode->isReverse()) 
+      if (Constants::dubinsShot && tmpNode->isInRange(*goalPose, dubinsShotDistance_) && !tmpNode->isReverse()) 
       {
-        nSucc = dubinsShot(*tmpNode, *goalPose, costmap);
+        nSucc = dubinsShot(*tmpNode, *goalPose, costmap, deltaHeadingRad_);
         //如果Dubins方法能直接命中，即不需要进入Hybrid A*搜索了，直接返回结果
         if (nSucc != nullptr && reachGoal(nSucc, goalPose)) 
         {
@@ -184,9 +184,9 @@ bool hybridAstar::calculatePath(
           return true;//如果下一步是目标点，可以返回了
         }
       } 
-      else if(reedsSheppShot_ && tmpNode->isInRange(*goalPose) && !tmpNode->isReverse()) 
+      else if(reedsSheppShot_ && tmpNode->isInRange(*goalPose, dubinsShotDistance_) && !tmpNode->isReverse()) 
       {
-        nSucc = reedsSheppShot(*tmpNode, *goalPose, costmap, turning_radius_, ReedsSheppStepSize_);
+        nSucc = reedsSheppShot(*tmpNode, *goalPose, costmap, turning_radius_, ReedsSheppStepSize_, deltaHeadingRad_);
         /* 如果Dubins方法能直接命中，即不需要进入Hybrid A*搜索了，直接返回结果 */
         if (nSucc != nullptr && reachGoal(nSucc, goalPose)) 
         {
@@ -233,13 +233,13 @@ bool hybridAstar::calculatePath(
     std::vector<Node3D*> adjacentNodes = gatAdjacentPoints(dir, cellsX, cellsY, charMap, tmpNode);   
     /* 将 tmpNode点在pathNode3D中映射的点加入闭集合中 */
     // 根据坐标和方向生成唯一索引
-    closed_set.emplace(tmpNode->getindex(cells_x ,Constants::headings, resolution, dx, dy), tmpNode); // 将 tmpNode 标记为已处理，防止重复扩展
+    closed_set.emplace(tmpNode->getindex(cells_x ,heading_, resolution, dx, dy), tmpNode); // 将 tmpNode 标记为已处理，防止重复扩展
     /* 逐个检查相邻节点是否需加入开放集合 */
     for (std::vector<Node3D*>::iterator it = adjacentNodes.begin(); it != adjacentNodes.end(); ++it) 
     {
       // 使用stl标准库中的interator迭代器遍历相邻点
       Node3D* point = *it;
-      iPred = point->getindex(cells_x, Constants::headings, resolution, dx, dy);
+      iPred = point->getindex(cells_x, heading_, resolution, dx, dy);
 
       /* 若相邻节点已在关闭集合中（已探索过），跳过处理 */
       if (closed_set.find(iPred)!= closed_set.end()) continue;
@@ -267,7 +267,7 @@ bool hybridAstar::calculatePath(
         {
           dp_map_g_cost=dp_map[start_y * cellsX + start_x]->getG()/20;
         }
-        updateH(*point, *goalPose, NULL, NULL, cells_x, cells_y, dp_map_g_cost);
+        updateH(*point, *goalPose, NULL, NULL, cells_x, cells_y, dp_map_g_cost, deltaHeadingRad_, reverse_);
         openSet.push(point);    // 如果符合拓展点要求，则将此点加入优先队列中 
       }
     }
@@ -292,7 +292,7 @@ std::vector<Node3D*> hybridAstar::gatAdjacentPoints(int dir, int cells_x,
   {
     double x = point->getX();
     double y = point->getY();
-    double t = point->getT();   
+    double t = point->getT(deltaHeadingRad_);   
     for (int j = 1; j <= segment_length_discrete_num_; j++) // 
     {
       /* 前向拓展 */
@@ -384,15 +384,15 @@ bool hybridAstar::reachGoal(Node3D* node, Node3D* goalPose)
   {
     /* 方向判断 */
     // 检查 node 的方向角 T 是否在目标方向角 ±theta_accuracy 范围内
-    if (node->getT()  < (goalPose->getT()+theta_accuracy )&& 
-        node->getT()  > (goalPose->getT()-theta_accuracy )) 
+    if (node->getT(deltaHeadingRad_)  < (goalPose->getT(deltaHeadingRad_)+theta_accuracy )&& 
+        node->getT(deltaHeadingRad_)  > (goalPose->getT(deltaHeadingRad_)-theta_accuracy )) 
       return true;
   }
   return false;
 }
 
 int hybridAstar::calcIndix(float x, float y, int cells_x, float t) {
-    return (int(x) * cells_x + int(y)) * Constants::headings + int(t / Constants::headings);
+    return (int(x) * cells_x + int(y)) * heading_ + int(t / heading_);
 }
 
 /* 将混合 A* 算法生成的路径节点链表（从目标节点回溯到起点）转换为 geometry_msgs::PoseStamped 类型的路径序列，
@@ -411,7 +411,7 @@ void hybridAstar::nodeToPlan(Node3D* node, std::vector<geometry_msgs::PoseStampe
     tmpPose.pose.position.x = tmpPtr->getX();
     tmpPose.pose.position.y = tmpPtr->getY();
     tmpPose.header.frame_id = frame_id_;
-    tmpPose.pose.orientation = tf::createQuaternionMsgFromYaw(tmpPtr->getT());
+    tmpPose.pose.orientation = tf::createQuaternionMsgFromYaw(tmpPtr->getT(deltaHeadingRad_));
     replan.push_back(tmpPose);
     tmpPtr = tmpPtr->getPerd(); // 转移到父节点
   }

@@ -71,6 +71,10 @@ void HybridAStarPlanner::initialize(std::string name, costmap_2d::Costmap2D *_co
     bspline_optimizer_rebound_->setParam(private_nh);
 
     nh2.param("use_hybrid_astar", use_hybrid_astar, true);
+    nh2.getParam("UfsPlaner/max_inflate_iter", max_inflate_iter_);
+    nh2.getParam("UfsPlaner/expansion_step_length", expansion_step_length_);
+
+
     if(use_hybrid_astar) {
       ROS_INFO("Using hybrid_astar mode!");
     } else {
@@ -533,11 +537,11 @@ std::pair<Cube, bool> HybridAStarPlanner::inflateCube(const Cube &cube, const Cu
 
   // 依次将cube的某个面(例如P1-P4-P8-P5)向对应的坐标轴方向扩展_step_length, 并检查这个面是否触碰障碍物
   int iter = 0;
-  while (iter < Constants::max_inflate_iter) // 迭代次数也就是最大扩展距离
+  while (iter < max_inflate_iter_) // 迭代次数也就是最大扩展距离
   {   
     /* --------------------------------------------Y Axis-------------------------------------------- */
-    int y_lo = std::max(0, vertex_idx(1, 1) - Constants::step_length);
-    int y_up = std::min(static_cast<int>(costmap->getSizeInCellsY()), vertex_idx(2, 1) + Constants::step_length);
+    int y_lo = std::max(0, vertex_idx(1, 1) - expansion_step_length_);
+    int y_up = std::min(static_cast<int>(costmap->getSizeInCellsY()), vertex_idx(2, 1) + expansion_step_length_);
 
     // Y+ now is the right side : (p2 -- p3 -- p7 -- p6) face
     // ############################################################################################################
@@ -609,8 +613,8 @@ std::pair<Cube, bool> HybridAStarPlanner::inflateCube(const Cube &cube, const Cu
       vertex_idx(1, 1) = vertex_idx(0, 1)  = id_y + 1;    
     
     /* --------------------------------------------X Axis-------------------------------------------- */
-    int x_lo = std::max(0, vertex_idx(0, 0) - Constants::step_length);
-    int x_up = std::min(static_cast<int>(costmap->getSizeInCellsX()), vertex_idx(1, 0) + Constants::step_length);
+    int x_lo = std::max(0, vertex_idx(0, 0) - expansion_step_length_);
+    int x_up = std::min(static_cast<int>(costmap->getSizeInCellsX()), vertex_idx(1, 0) + expansion_step_length_);
     // X + now is the front side : (p1 -- p2 -- p6 -- p5) face
     // ############################################################################################################
 

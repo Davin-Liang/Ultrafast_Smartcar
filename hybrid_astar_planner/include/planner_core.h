@@ -203,6 +203,9 @@ class HybridAStarPlanner : public nav_core::BaseGlobalPlanner {
         ros::ServiceServer make_plan_srv_;
         bool use_hybrid_astar;
         std::vector<HybridAStartResult> partition_trajectories;
+
+        int max_inflate_iter_ = 0;
+        int expansion_step_length_ = 0;
         // std::vector<std::pair<VecCube, VecCube>> corridors;
      
         double delta_t_ = 0.0;

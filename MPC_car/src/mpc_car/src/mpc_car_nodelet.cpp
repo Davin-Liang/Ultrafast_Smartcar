@@ -179,12 +179,12 @@ class Nodelet : public nodelet::Nodelet
 
       geometry_msgs::Twist msg;
       if (path_direction[path_seg_index] > 0)
-        msg.linear.x = pre_state_(3) + u(0) * 0.03;
+        msg.linear.x = pre_state_(3) + u(0) * 0.035;
       else
       {
         std::cout << "state_(3) = " << state_(3) << std::endl;
         // msg.linear.x = -abs(state_(3) + u(0) * 0.03);
-        msg.linear.x = pre_state_(3) + u(0) * 0.03;
+        msg.linear.x = pre_state_(3) + u(0) * 0.035;
 
       }
 

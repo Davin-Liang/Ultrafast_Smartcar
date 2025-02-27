@@ -132,19 +132,31 @@ class MpcCar {
     else
       phi = atan2(dy, dx) - M_PI; /* 在这里实现倒车 */
     
-    if (s0 >= s_.arcL()*0.98) // 如果进度已经完成，就将车停下
+    if (s0 >= s_.arcL()) // 如果进度已经完成，就将车停下
     {
       v = 0.0;
       delta = 0.0;
     }
     else
     {
-      v = desired_v_;
-      // std::cout << v << std::endl;
-      // v = std::max (x0_observe_(3), desired_v_);
-      delta = atan2(ll_ * dphi / (v) , 1.0);// ERROR?这里不是应该再除以一个v吗？
-      // if(path_direction_ == 0) delta *= -1; //倒车
-      // delta = atan2(ll_ * dphi , 1.0);// ERROR?这里不是应该再除以一个v吗？
+      std::cout << "s_.arcL() - s0 = " << s_.arcL() - s0 << std::endl;
+      std::cout << "s_.arcL() - s0 = " << s_.arcL() - s0 << std::endl;
+      std::cout << "s_.arcL() - s0 = " << s_.arcL() - s0 << std::endl;
+      std::cout << "s_.arcL() - s0 = " << s_.arcL() - s0 << std::endl;
+      std::cout << "s_.arcL() - s0 = " << s_.arcL() - s0 << std::endl;
+      // if (s_.arcL() - s0 > 1.0)
+      // {
+        v = desired_v_;
+        delta = atan2(ll_ * dphi / (v), 1.0);// ERROR?这里不是应该再除以一个v吗？
+        // if(path_direction_ == 0) delta *= -1; //倒车
+        // delta = atan2(ll_ * dphi , 1.0);// ERROR?这里不是应该再除以一个v吗？
+      // }
+      // else
+      // {
+      //   v = (s_.arcL() - s0) / 1.0 * desired_v_;
+      //   delta = atan2(ll_ * dphi / (v) , 1.0);
+      // }
+      
     }
 
 

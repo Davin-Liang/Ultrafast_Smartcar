@@ -50,7 +50,7 @@ static const float deltaHeadingDeg = 360 / (float)headings;
 
 /// [c*M_PI] --- The discretization value of heading (goal condition)
 // static const float deltaHeadingRad = 2 * M_PI / (float)headings; //朝向离散步长(以弧度表示)
-static const float deltaHeadingRad = 2 * M_PI / 80.0; //朝向离散步长(以弧度表示)
+static const float deltaHeadingRad = 2 * M_PI / (float)headings; //朝向离散步长(以弧度表示)
 
 /// [c*M_PI] --- The heading part of the goal condition 
 static const float deltaHeadingNegRad = 2 * M_PI - deltaHeadingRad;
@@ -85,7 +85,7 @@ static const float dubinsStepSize = 0.088;
 
 /* cube and inflate */
 static const int max_inflate_iter = 10; // 膨胀迭代次数
-static const int step_length = 1; // 安全走廊向外膨胀步长
+static const int step_length = 2; // 安全走廊向外膨胀步长
 static const double MAX_Vel = 1.0; // 最大速度
 static const double MAX_Acc = 1.0; // 最大加速度
 

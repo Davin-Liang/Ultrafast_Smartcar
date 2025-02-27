@@ -40,11 +40,11 @@
 // 设计启发函数
 namespace hybrid_astar_planner {
 
-void Node3D::setT(float _t) {
+void Node3D::setT(float _t, double deltaHeadingRad) {
   if (_t>3.1415) {
     _t = _t - 6.283;
   }
-  t = _t / Constants::deltaHeadingRad;
+  t = _t / deltaHeadingRad;
 }
 
 
@@ -91,11 +91,11 @@ float Node3D::calcH(Node3D const *goal) {
 //###################################################
 //                                        IS IN RANGE
 //###################################################
-bool Node3D::isInRange(const Node3D& goal) const {
+bool Node3D::isInRange(const Node3D& goal, double dubinsShotDistance) const {
   int random = rand() % 10 + 1;//产生位于[1, 10]的随机数
   float dx = std::abs(x - goal.x) / random;
   float dy = std::abs(y - goal.y) / random;
-  return (dx * dx) + (dy * dy) < Constants::dubinsShotDistance;//距离的平方和在100以内则认为可达
+  return (dx * dx) + (dy * dy) < dubinsShotDistance;//距离的平方和在100以内则认为可达
 }
 
 //###################################################
@@ -105,8 +105,8 @@ bool Node3D::isInRange(const Node3D& goal) const {
 bool Node3D::operator == (const Node3D& rhs) const {
   return (int)x == (int)rhs.x &&
           (int)y == (int)rhs.y &&
-          (std::abs(t - rhs.t) <= Constants::deltaHeadingRad ||
-          std::abs(t - rhs.t) >= Constants::deltaHeadingNegRad);
+          (std::abs(t - rhs.t) <= 2 * 3.14 / 72.0 || //TODO:
+          std::abs(t - rhs.t) >= 2 * 3.14 - 2 * 3.14 / 72.0); // TODO:
 }
 
 } // namespace hybrid_astar_planner

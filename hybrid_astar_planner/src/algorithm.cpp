@@ -78,14 +78,14 @@ void nodeToPlan(Node2D* node, std::vector<geometry_msgs::PoseStamped>& plan, cos
 }
 
 void  updateH(Node3D& start, const Node3D& goal, Node2D* nodes2D, 
-    float* dubinsLookup, int width, int height, float inspireAstar) 
+    float* dubinsLookup, int width, int height, float inspireAstar, double deltaHeadingRad, bool reverse) 
 {
   float reedsSheppCost = 0;
   float twoDCost = 0;
   float twoDoffset = 0;
   #ifdef use_ReedsShepp_heuristic
   // 假如车子可以后退，则可以启动Reeds-Shepp 算法
-  if (Constants::reverse && !Constants::dubins) 
+  if (reverse && !Constants::dubins) 
   {
     //reeds_shepp算法还还存在问题，启用可能会造成搜寻路径增加等问题
 
@@ -93,9 +93,9 @@ void  updateH(Node3D& start, const Node3D& goal, Node2D* nodes2D,
     State* rsStart = (State*)reedsSheppPath.allocState();
     State* rsEnd = (State*)reedsSheppPath.allocState();
     rsStart->setXY(start.getX(), start.getY());
-    rsStart->setYaw(start.getT());
+    rsStart->setYaw(start.(deltaHeadingRad));
     rsEnd->setXY(goal.getX(), goal.getY());
-    rsEnd->setYaw(goal.getT());
+    rsEnd->setYaw(goal.getT(deltaHeadingRad));
     reedsSheppCost = reedsSheppPath.distance(rsStart, rsEnd) * 1.1 + 0.04 * start.getCost();
 
   }
@@ -104,11 +104,11 @@ void  updateH(Node3D& start, const Node3D& goal, Node2D* nodes2D,
 }
 
 
-Node3D* dubinsShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costmap) {
+Node3D* dubinsShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costmap, double deltaHeadingRad) {
   // start
-  double q0[] = { start.getX(), start.getY(), start.getT() };
+  double q0[] = { start.getX(), start.getY(), start.getT(deltaHeadingRad) };
   // goal
-  double q1[] = { goal.getX(), goal.getY(), goal.getT() };
+  double q1[] = { goal.getX(), goal.getY(), goal.getT(deltaHeadingRad) };
   // initialize the path
   DubinsPath path;
   // calculate the path
@@ -127,7 +127,7 @@ Node3D* dubinsShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costmap) 
     dubins_path_sample(&path, x, q);
     dubinsNodes[i].setX(q[0]);
     dubinsNodes[i].setY(q[1]);
-    dubinsNodes[i].setT(q[2]);
+    dubinsNodes[i].setT(q[2], deltaHeadingRad);
 
     // collision check
     //跳出循环的条件之二：生成的路径存在碰撞节点
@@ -156,15 +156,15 @@ Node3D* dubinsShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costmap) 
   return &dubinsNodes[i - 1];
 }
 
-Node3D* reedsSheppShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costmap, double turning_radius, double ReedsSheppStepSize) 
+Node3D* reedsSheppShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costmap, double turning_radius, double ReedsSheppStepSize, double deltaHeadingRad) 
 {
   ReedsSheppStateSpace rs_planner(turning_radius);
   double length = -1;
   unsigned int poseX, poseY;
   // start
-  double q0[] = { start.getX(), start.getY(), start.getT() };
+  double q0[] = { start.getX(), start.getY(), start.getT(deltaHeadingRad) };
   // goal
-  double q1[] = { goal.getX(), goal.getY(), goal.getT() };
+  double q1[] = { goal.getX(), goal.getY(), goal.getT(deltaHeadingRad) };
   std::vector<std::vector<double> > rs_path;
   rs_planner.sample(q0, q1, ReedsSheppStepSize, length, rs_path);
   Node3D* dubinsNodes = new Node3D [(int)(length / ReedsSheppStepSize) + 1];
@@ -174,7 +174,7 @@ Node3D* reedsSheppShot(Node3D& start, Node3D& goal, costmap_2d::Costmap2D* costm
   {
     dubinsNodes[i].setX(point_itr[0]);
     dubinsNodes[i].setY(point_itr[1]);
-    dubinsNodes[i].setT(point_itr[2]);
+    dubinsNodes[i].setT(point_itr[2], deltaHeadingRad);
 
     //collision check
     costmap->worldToMap(dubinsNodes[i].getX(), dubinsNodes[i].getY(), poseX, poseY);

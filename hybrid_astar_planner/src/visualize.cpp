@@ -106,7 +106,7 @@ void HybridAStarPlanner::publishPathNodes(const std::vector<geometry_msgs::PoseS
 }//end of publishPathNodes
 
 void publishSearchNodes(Node3D node,ros::Publisher& pub, 
-    visualization_msgs::MarkerArray& pathNodes, int i) {
+    visualization_msgs::MarkerArray& pathNodes, int i, double deltaHeadingRad) {
   visualization_msgs::Marker pathVehicle;
   pathVehicle.header.stamp = ros::Time(0);
   pathVehicle.color.r = 250.f / 255.f;
@@ -123,7 +123,7 @@ void publishSearchNodes(Node3D node,ros::Publisher& pub,
   pathVehicle.pose.position.x = node.getX();
   pathVehicle.pose.position.y = node.getY();
   pathVehicle.pose.position.z = 0;
-  pathVehicle.pose.orientation = tf::createQuaternionMsgFromYaw(node.getT());
+  pathVehicle.pose.orientation = tf::createQuaternionMsgFromYaw(node.getT(deltaHeadingRad));
   pathVehicle.id = i;
   pathNodes.markers.push_back(pathVehicle);
   

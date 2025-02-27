@@ -10,15 +10,19 @@ public:
     Node3D(float _x , float _y, float t, float _g = 999, float _h = 0, bool _reverse = false, Node3D* _perd = nullptr):
     x(_x), y(_y), g(_g), h(_h), o(false), c(false), reverse(_reverse), perd(_perd)
     {
-        setT(t);
+        setT(t, 2 * 3.14 / 72.0); //TODO
         index = -1;
+
+        // ros::NodeHandle nh("~/");
+        // nh.getParam("UfsPlaner/heading", heading_);
+        // deltaHeadingRad_ = 2 * 3.14 / (double)heading_;
     }
     ~Node3D(){}
     
     void setX(float _x) { x = _x; }
     void setY(float _y) { y = _y; }
     void setCost(unsigned int C) { cost = C; }
-    void setT(float _t);
+    void setT(float _t, double deltaHeadingRad);
     void setG(float _g) { g = _g; }
     void setH(float _h) { h = _h; }
     void setClosedSet() { c = true; o = false; }
@@ -27,7 +31,7 @@ public:
     void setReverse(bool r) { reverse = r; }
     float getX(void) const { return x; }
     float getY(void) const { return y; }
-    float getT(void) const { return t * Constants::deltaHeadingRad; }
+    float getT(double deltaHeadingRad) const { return t * deltaHeadingRad; }
     float getTheta(void) const { return theta; }
     float getF(void) const { return g + h; }
     int getCost() {return cost;}
@@ -47,7 +51,7 @@ public:
     Node3D* getPerd() { return perd; }
     // RANGE CHECKING
     /// Determines whether it is appropriate to find a analytical solution.
-    bool isInRange(const Node3D& goal) const;//检测是否可以分析方法找到解
+    bool isInRange(const Node3D& goal, double dubinsShotDistance) const;//检测是否可以分析方法找到解
 
     // CUSTOM OPERATORS
     /// Custom operator to compare nodes. Nodes are equal if their x and y position as well as heading is similar.
@@ -80,6 +84,9 @@ public:
         bool reverse;
         /// the predecessor pointer
         Node3D* perd;
+
+        int heading_ = 0;
+        double deltaHeadingRad_ = 0;
 };
 
 }//end of namespace hybrid_astar_planner

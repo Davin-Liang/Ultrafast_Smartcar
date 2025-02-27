@@ -1,10 +1,14 @@
-HybirdAStar:
-  reverse: True
+UfsPlaner:
+  reverse: True # 是否可以倒退
   iterations: 30000 # 迭代次数
-  move_step_size: 0.05 # 移动步长
+  move_step_size: 0.07 # 移动步长
   segment_length_discrete_num: 2
-  steering_angle: 9.0
+  steering_angle: 9.0 # 打角角度
   wheel_base: 0.13 # 轴间距
-  turning_radius: 1.0
-  ReedsSheppStepSize: 0.088
-  reedsSheppShot: True
+  turning_radius: 1.0 # 转弯半径
+  ReedsSheppStepSize: 0.088 # RS曲线步长
+  reedsSheppShot: True # 是否使用RS曲线连接终点
+  dubinsShotDistance: 100
+  heading: 72
+  max_inflate_iter: 8
+  expansion_step_length: 2

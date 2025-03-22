@@ -211,12 +211,23 @@ namespace opt_planner
   }
 
   // void UniformBspline::recomputeInit() {}
-  /* 基于 均匀 B 样条 的路径参数化方法，核心目的是根据离散的路径点和起终端导数信息，计算出一组“控制点”，以构建平滑的 B 样条路径 */
+/*
+  param：
+    - ts:轨迹执行时间
+    - point_set:原轨迹点集合
+    - start_end_derivative:起点和终点的高阶约束
+  output:
+    - ctrl_pts:控制点矩阵
+  fuction:
+    - 将给定点集和起始/终止导数转换为B-Spline曲线的控制点矩阵，通过对原始轨迹的拟合得到B样条轨迹的控制点
+*/
   void UniformBspline::parameterizeToBspline(const double &ts, 
                                              const vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> &point_set,
                                              const vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> &start_end_derivative,
                                              Eigen::MatrixXd *ctrl_pts)
   {
+    /* 该部分b样条构建，Fast-planner 和 ego-planner 是一样，已进行对比过 */
+    // 不同的地方在于后边的b样条优化
     /* B样条基函数的公式 */
     //B03 = 1/6(1-u)^3
     //B13 = 1/6(3u^3 -6u^2 +4)
@@ -244,36 +255,61 @@ namespace opt_planner
 
     int K = point_set.size();//initial points size
 
-    /* 通过数学建模，我们可以将B样条拟合问题转换为一个线性方程组的问题 */
-    /* 初始化 A 矩阵，该矩阵用于常规的三维B样条 */
-    Eigen::Vector3d prow(3), vrow(3), arow(3), inirow(3), endrow(3), secrow(3), lsecrow(3);
-    inirow << 1, 0, 0;
-    secrow << 1/2, 7/6, 1/3;
-    lsecrow << 1/3, 7/6, 1/2;
-    endrow << 0, 0, 1;
+    /* 通过数学建模，我们可以将 B 样条拟合问题转换为一个线性方程组的问题 */
+    /* 初始化 A 矩阵，该矩阵用于常规的三维 B 样条 */
+    Eigen::Vector3d prow(3), vrow(3), arow(3);
+    // Eigen::Vector3d prow(3), vrow(3), arow(3), inirow(3), endrow(3), secrow(3), lsecrow(3);
+    // inirow <<    1,   0,   0;
+    // secrow <<  1/2, 7/6, 1/3;
+    // lsecrow << 1/3, 7/6, 1/2;
+    // endrow <<    0,   0,   1;
 
-    prow << 1, 4, 1;
-    vrow << -1, 0, 1;
-    arow << 1, -2, 1;
+    /* 
+      M^4 = [
+              1   4  1 0
+             -3   0  3 0
+              3  -6  3 0
+             -1   3 -3 1
+            ]
+     */
+    prow <<      1,   4,   1;
+    vrow <<     -1,   0,   1;
+    arow <<      1,  -2,   1;
 
     Eigen::MatrixXd A = Eigen::MatrixXd::Zero(K + 4, K + 2);
     for (int i = 0; i < K; ++i)
       A.block(i, i, 1, 3) = (1 / 6.0) * prow.transpose();
 
-    A.block(K, 0, 1, 3) = (1 / 2.0 ) * vrow.transpose();
-    A.block(K + 1, K - 1, 1, 3) = (1 / 2.0 ) * vrow.transpose();
-    A.block(K + 2, 0, 1, 3) =  (1 / 2.0 ) *arow.transpose();
-    A.block(K + 3, K - 1, 1, 3) =  (1 / 2.0 ) *arow.transpose();
+    A.block(K, 0, 1, 3) = (1 / 2.0) * vrow.transpose();
+    A.block(K + 1, K - 1, 1, 3) = (1 / 2.0) * vrow.transpose();
+    A.block(K + 2, 0, 1, 3) =  (1 / 2.0) * arow.transpose();
+    A.block(K + 3, K - 1, 1, 3) =  (1 / 2.0) * arow.transpose();
 
     /* 初始化 Axy 矩阵，用于处理每个维度的速度和加速度 */
-    Eigen::MatrixXd Axy = Eigen::MatrixXd::Zero(K+4, K + 2);
+    // Axy 的矩阵形式如下：
+
+    Eigen::MatrixXd Axy = Eigen::MatrixXd::Zero(K + 4, K + 2); 
+    // (k+4) 个等式约束，(k+2) 个控制点
+    // (k+4) 个等式约束包括 k 个位置约束(来自轨迹点)，2个速度约束，2个加速度约束(来自初始位置和终点))
+    // 对于 k 个轨迹点，每一个轨迹点对应的时间节点t都是 tm，代入 ((t-tm)/deltat) 都会得到 0，所以 s(t) 有很多项都为 0 
+    /* 
+                  |p          |
+                  |  p        |
+                  |    ...    |
+                  |        p  |
+      Axy =       |          p|
+                  |v          |
+                  |          v|
+                  |a          |
+                  |          a|
+     */           
     for (int i = 0; i < K; ++i)
       Axy.block(i, i, 1, 3) = (1 / 6.0) * prow.transpose();
 
-    Axy.block(K, 0, 1, 3) = (1 / 2.0 / ts) * vrow.transpose();
+    Axy.block(K, 0, 1, 3)         = (1 / 2.0 / ts) * vrow.transpose();
     Axy.block(K + 1, K - 1, 1, 3) = (1 / 2.0 / ts) * vrow.transpose();
-    Axy.block(K + 2, 0, 1, 3) = (1 / ts / ts) * arow.transpose();
-    Axy.block(K + 3, K - 1, 1, 3) = (1 / ts / ts) * arow.transpose();
+    Axy.block(K + 2, 0, 1, 3)     =  (1 / ts / ts) * arow.transpose();
+    Axy.block(K + 3, K - 1, 1, 3) =  (1 / ts / ts) * arow.transpose();
 
     // write b
     /* bx, by, bz 是输入路径点的x、y、z坐标以及起终点的导数（速度和加速度） */

@@ -206,6 +206,8 @@ class HybridAStarPlanner : public nav_core::BaseGlobalPlanner {
 
         int max_inflate_iter_ = 0;
         int expansion_step_length_ = 0;
+        double control_point_distance_ = 0.0;
+        double max_vel_ = 0.0;
         // std::vector<std::pair<VecCube, VecCube>> corridors;
      
         double delta_t_ = 0.0;

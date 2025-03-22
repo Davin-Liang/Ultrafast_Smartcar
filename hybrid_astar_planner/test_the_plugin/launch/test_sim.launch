@@ -13,7 +13,7 @@
         <!-- <param name="base_local_planner" value="teb_local_planner/TebLocalPlannerROS" /> -->
         <param name="use_hybrid_astar" value="true" />
 
-        <rosparam file="$(find hybrid_astar_planner)/test_the_plugin/param/hybird_A_star_params.yaml" command="load" /> 
+        <rosparam file="$(find hybrid_astar_planner)/test_the_plugin/param/ufs_planner_params.yaml" command="load" /> 
     </node>
 
     <!-- 纯激光定位 -->

@@ -12,3 +12,7 @@ UfsPlaner:
   heading: 72
   max_inflate_iter: 8
   expansion_step_length: 2
+  # B样条优化相关参数
+  control_point_distance: 0.08 # 相邻控制点的距离
+  max_vel: 1.0
+

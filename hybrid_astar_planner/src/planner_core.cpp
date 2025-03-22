@@ -73,6 +73,8 @@ void HybridAStarPlanner::initialize(std::string name, costmap_2d::Costmap2D *_co
     nh2.param("use_hybrid_astar", use_hybrid_astar, true);
     nh2.getParam("UfsPlaner/max_inflate_iter", max_inflate_iter_);
     nh2.getParam("UfsPlaner/expansion_step_length", expansion_step_length_);
+    nh2.getParam("UfsPlaner/control_point_distance", control_point_distance_);
+    nh2.getParam("UfsPlaner/max_vel", max_vel_);
 
 
     if(use_hybrid_astar) {
@@ -140,7 +142,9 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
     return false; // 代表规划失败
   }
 
-  /* 正式将参数传入规划器中 */
+  /* ----------------------------------------------------------------------------------------------- */
+  /* ------------------------------------生成Hybird A*前端全局路径------------------------------------ */
+  /* ----------------------------------------------------------------------------------------------- */
   visualization_msgs::MarkerArray AstarpathNodes;
   if( !_planner->calculatePath(start, 
                               goal, 
@@ -161,7 +165,10 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
 
   std::cout << "规划出来的初始全局路径一共有 " << plan_.size() << " 个轨迹点！" << std::endl;
 
-  /* 分割路径，为每个分段轨迹生成速度、加速度、转向角等动态信息 */
+  /* ----------------------------------------------------------------------------------------------- */
+  /* --------------------------------------------分割路径-------------------------------------------- */
+  /* ----------------------------------------------------------------------------------------------- */
+  // 分割路径，为每个分段轨迹生成速度、加速度、转向角等动态信息
   HybridAStartResult result;
   DataTransform(plan_, &result);
   if (!TrajectoryPartition(result, &partition_trajectories)) 
@@ -171,40 +178,44 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
   }
   std::cout << "完成路径分割！" << std::endl;
 
-  /* 生成安全走廊，并为安全走廊分配时间信息 */
+  /* ----------------------------------------------------------------------------------------------- */
+  /* ------------------------------------------构建安全走廊------------------------------------------ */
+  /* ----------------------------------------------------------------------------------------------- */
   std::vector<VecCube> corridors;
   VecCube connected_corridors;
   Timer time_bef_corridor; // 用于计算耗时
   int segment = 0; // 用于标记现在处理到哪段轨迹
-  for (const auto & trajectory : partition_trajectories) // 为每段轨迹生成安全走廊
+
+  /* 为每段轨迹生成安全走廊 */
+  for (const auto & trajectory : partition_trajectories) 
   {
     segment++;
     VectorVec3d post_path;
-    for (int i = 0; i < trajectory.x.size(); i++)
+
+    for (int i = 0; i < int(trajectory.x.size()); i++)
     {
       post_path.push_back({trajectory.x[i], trajectory.y[i], 0}); // 只需取出每个轨迹点的位置坐标
     }
     VecCube temp = corridorGeneration(post_path, segment);
     std::cout << "成功为第 " << segment << " 段轨迹生成安全走廊！"<< std::endl;
     // timeAllocation(temp.second, start_state, goal_state); // 为安全走廊分配时间信息
-    timeAllocation(temp, start_state, goal_state); // 为安全走廊分配时间信息
-    std::cout << "成功为第 " << segment << " 处安全走廊分配时间信息！"<< std::endl;
+    // timeAllocation(temp, start_state, goal_state); // 为安全走廊分配时间信息
+    // std::cout << "成功为第 " << segment << " 处安全走廊分配时间信息！"<< std::endl;
     corridors.push_back(temp);
   }
   std::cout << "全局路径一共有" << segment << "段轨迹！" << std::endl;
   ConnectCorridors(corridors, connected_corridors);
   std::cout << "成功合并走廊！" << std::endl;
-  std::cout << "Time consume in corridor generation is: " << time_bef_corridor.End() <<" ms."<< std::endl;
+  std::cout << "生成安全走廊所花费的时间为: " << time_bef_corridor.End() <<" ms."<< std::endl;
 
   PublishCorridor(connected_corridors); // 发布安全走廊
 
   /* ----------------------------------------------------------------------------------------------- */
   /* -------------------------------------------B 样条优化------------------------------------------- */
   /* ----------------------------------------------------------------------------------------------- */
-  
-  double total_opt_time = 0.0;
+  // double total_opt_time = 0.0;
   vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> BSplineSmooth_set;
-  for (int i = 0; i < partition_trajectories.size(); ++i)
+  for (int i = 0; i < int(partition_trajectories.size()); ++i)
   {
     vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> point_set;
     double start_angle, end_angle, distance;
@@ -213,14 +224,16 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
     /* 得到样本路径 */
     getSample(partition_trajectories[i], &point_set, sample_count, start_angle, end_angle, distance);
     std::cout << "得到第 " << i << " 样本路径" << std::endl;
+
     if (point_set.size() < 4) 
     {
-      std::cout << "point_set.size() < 4, skip该段轨迹抽样出来的样本路径数量小于 4，不进行优化，跳过该路径!!!" << std::endl;
+      std::cout << "本次优化的抽样路径的路径点小于 4 个, 不进行优化, 跳过该路径!!!" << std::endl;
       continue; // 防止参考点数量太少
     }
 
-    double ts = distance > 0.1 ? (Constants::ctrl_pt_dist / Constants::MAX_Vel * 1.5) 
-                               : (Constants::ctrl_pt_dist / Constants::MAX_Vel * 5);
+    /* 确定时间区间的大小 */
+    double ts = distance > 0.1 ? (control_point_distance_ / max_vel_ * 1.5) 
+                               : (control_point_distance_ / max_vel_ * 5);
 
     /* 初始化起点和终点的速度和加速度约束 */
     vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> start_end_derivatives;
@@ -230,21 +243,19 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
     start_end_derivatives.push_back(Eigen::Vector3d::Zero()); // 终点的二阶导数（加速度）
     
     Eigen::MatrixXd ctrl_pts;
+    /* B样条曲线拟合 */
     opt_planner::UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, &ctrl_pts);
+    publishPathFromCtrlPts(ctrl_pts);
     bspline_optimizer_rebound_->initControlPoints(ctrl_pts, true);
 
     Timer time_bef_optimization;
-    /* 开始优化！！！！！！！！！！！！！！！！！！！！！ */
-    // bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts, corridors[i].second);
-    bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts, corridors[i]);
-    std::cout << "3" << std::endl;
-    publishPathFromCtrlPts(ctrl_pts);
-    total_opt_time += time_bef_optimization.End();
+    /* B样条曲线优化 */
+    bool optimization_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts, corridors[i]);
+    // publishPathFromCtrlPts(ctrl_pts);
     std::cout << "Time consume in optimization is: " << time_bef_optimization.End() <<" ms"<< std::endl;
 
-    if (!flag_step_1_success)
+    if (!optimization_success)
     {
-      // continous_failures_count_++;
       ROS_ERROR("OPTIMIZE failed!");
       std::cout << "OPTIMIZE failed in iteration: " << i << std::endl;
 
@@ -271,7 +282,6 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
   std::cout << "length in optimization is: " << b_spline_length <<" m"<< std::endl;
 
   /* 参数后期处理，发布到RViz上进行可视化 */
-  //path只能发布2D的节点
   publishPlan(plan_); // 发布初始的全局规划路径
   publishPathNodes(plan_);
   publishPlan_bspline(BSplineSmooth_set); // 发布 B 样条优化后的路径
@@ -310,7 +320,7 @@ bool HybridAStarPlanner::checkgoalPose(const geometry_msgs::PoseStamped &goal)
 
 void HybridAStarPlanner::DataTransform(std::vector<geometry_msgs::PoseStamped>& plan, HybridAStartResult* result)
 {
-  for (unsigned int i = 0; i < plan.size(); i++)
+  for (unsigned int i = 0; i < int(plan.size()); i++)
   {
     result->x.emplace_back(plan[i].pose.position.x);
     result->y.emplace_back(plan[i].pose.position.y);//todo
@@ -829,13 +839,14 @@ void HybridAStarPlanner::PublishCorridor(const std::vector<Cube> &corridor)
   mk.pose.orientation.z = 0.0;
   mk.pose.orientation.w = 1.0;
 
-  mk.color.a = 0.08;
+  mk.color.a = 0.2; // 0.08
   mk.color.r = 0.0;
   mk.color.g = 1.0;
   mk.color.b = 1.0;
 
   int idx = 0;
   for(int i = 0; i < int(corridor.size()); i++)
+  // for(int i = 0; i < 1; i++)
   {   
     mk.id = idx;
 
@@ -856,35 +867,40 @@ void HybridAStarPlanner::PublishCorridor(const std::vector<Cube> &corridor)
 } /* end of PublishCorridor */
 
 void HybridAStarPlanner::getSample(const HybridAStartResult& trajectory, 
-  vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>* point_set, 
-  int sample_count, double& start_angle, double& end_angle, double& total_distance)
+                                  vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>* point_set, 
+                                  int sample_count, 
+                                  double& start_angle, 
+                                  double& end_angle, 
+                                  double& total_distance)
 {
   if (trajectory.x.size() == 4) 
     sample_count = 1;
 
   /* 得到抽样路径 */
   size_t j = 0;
-  while (j + 1 < trajectory.x.size()) {
-    point_set->emplace_back(trajectory.x[j],trajectory.y[j], trajectory.phi[j]);
+  while ((j + 1) < trajectory.x.size()) 
+  {
+    point_set->emplace_back(trajectory.x[j], trajectory.y[j], trajectory.phi[j]);
     j += sample_count;
   }
-  if (j + 1 != trajectory.x.size()) {
+  if ((j + 1) != trajectory.x.size()) 
     point_set->emplace_back(trajectory.x.back(),trajectory.y.back(), trajectory.phi.back()); // 插入轨迹尾
-  }
+
   /* 计算路径总长度 */
-  double sum = 0;
-  for (size_t j = 1; j < point_set->size(); ++j) // 从第二个点开始
-  {
-    sum += (point_set->at(j).head(2) - point_set->at(j - 1).head(2)).norm();
-  }
+  // double sum = 0;
+  // for (size_t j = 1; j < point_set->size(); ++j) // 从第二个轨迹点开始遍历
+  // {
+  //   sum += (point_set->at(j).head(2) - point_set->at(j - 1).head(2)).norm();
+  // }
   //一段路径出入射角度保持一致
   //CheckGear()函数在PathSmoothAlgorithm()中调用，如果没有调用PathSmoothAlgorithm()则gear为初始值！！！！
+  /* 得到一段路径的起始角度和终点角度 */
   gear_ = CheckGear(trajectory);
   start_angle = gear_.first ? point_set->front()(2) : common::math::NormalizeAngle(point_set->front()(2) + M_PI);
   end_angle = gear_.second ? point_set->back()(2) : common::math::NormalizeAngle(point_set->back()(2) + M_PI);
-  //一段路径的从起点到终点的位移
+  /* 得到一段路径的从起点到终点的直线位移 */
   total_distance = (point_set->back().head(2) - point_set->front().head(2)).norm();
-  std::cout << "一段路径的从起点到终点的位移(s): "<< total_distance << std::endl;
+  std::cout << "一段路径的从起点到终点的直线位移(s): "<< total_distance << std::endl;
 }
 
 std::pair<bool,bool> HybridAStarPlanner::CheckGear(const struct HybridAStartResult &trajectory) 

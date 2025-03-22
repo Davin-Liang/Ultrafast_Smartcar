@@ -24,7 +24,7 @@ namespace opt_planner
     lambda3_ = 0.1;
     lambda4_ = 1.6;
 
-    dist0_ = 1.0;
+    dist0_ = 0.5;
     max_vel_ = 1.0;
     max_acc_ = 1.0;
     max_curvature_ = 0.1;
@@ -59,12 +59,11 @@ namespace opt_planner
     {   
         Cube cube_     = corridor[k];
         double scale_k = 1;
-        // double scale_k = cube_.t;
 
         // 每个控制点的上下界表示它在对应轴（x 或 y）上的可取范围
         for(int i = 0; i < 2; i++ ) // 遍历 i = 0, 1，表示 x 和 y 两个轴
         {   
-            for(int j = 0; j < order_; j ++ ) // 遍历每段轨迹的控制点
+            for (int j = 0; j < order_; j ++) // 遍历每段轨迹的控制点
             {   
                 pair<double, double> vb_x;
 
@@ -91,10 +90,9 @@ namespace opt_planner
             }
         } 
     }
-    // std::cout<<"var_bdk.size() "<<var_bdk[0].size()<<endl;
-    // std::cout<<"corridor.size() "<<corridor.size()<<endl;
-    
   }
+
+
   // /* This function is very similar to check_collision_and_rebound(). 
   //  * It was written separately, just because I did it once and it has been running stably since March 2020.
   //  * But I will merge then someday.*/
@@ -111,7 +109,7 @@ namespace opt_planner
   //   // /*** a star search ***/
     vector<vector<Eigen::Vector3d>> a_star_pathes;
 
-    std::cout << "return a_star_pathes;" << std::endl;
+    // std::cout << "return a_star_pathes;" << std::endl;
     return a_star_pathes;
   }
 
@@ -251,19 +249,15 @@ namespace opt_planner
   {
     cost = 0.0;
     double demarcation = cps_.clearance;
-    // double demarcation = 1;
     double a = 3 * demarcation, b = -3 * pow(demarcation, 2), c = pow(demarcation, 3);
 
-    // force_stop_type_ = DONT_STOP;
-    // if (iter_num > 3 && smoothness_cost / (cps_.size - 2 * order_) < 0.1) // 0.1 is an experimental value that indicates the trajectory is smooth enough.
-    // {
-    //   check_collision_and_rebound();
-    // }
-
     /*** calculate distance cost and gradient ***/
-    for(int k = 0; k < 2; k++){
-      for(int i = 0; i < q.cols()-2 ; i++){
-        for(int j = 0; j < order_; j++){
+    for (int k = 0; k < 2; k ++) // k 遍历 0 和 1，对应 x 和 y 两个坐标轴
+    {
+      for (int i = 0; i < q.cols()-2 ; i++)
+      {
+        for (int j = 0; j < order_; j++)
+        {
           double upbound = 0, lowbound = 0;
 
           upbound = var_bdk[k][3*i + j].second;
@@ -355,11 +349,11 @@ namespace opt_planner
     // vm2 = max_vel_ * max_vel_;
     // am2 = max_acc_ * max_acc_;
     ts = bspline_interval_;
-    ts_inv2 = 1 / ts / ts;
-    ts_inv3 = 1 / ts / ts /ts;
+    ts_inv2 = 1 / ts / ts; // 1 / (ts^2)
+    ts_inv3 = 1 / ts / ts /ts; // 1 / (ts^3)
     if (falg_use_jerk)
     {
-      Eigen::Vector3d jerk, temp_j ;
+      Eigen::Vector3d jerk, temp_j;
 
       for (int i = 0; i < q.cols() - 3; i++)
       {
@@ -367,7 +361,7 @@ namespace opt_planner
         jerk = (q.col(i + 3) - 3 * q.col(i + 2) + 3 * q.col(i + 1) - q.col(i)) * ts_inv3;
 
         cost += jerk.squaredNorm();
-        temp_j = 2.0 * jerk * ts_inv3;
+        temp_j = 2.0 * jerk * ts_inv3; // TODO:
         /* jerk gradient */
         gradient.col(i + 0) += -temp_j;
         gradient.col(i + 1) += 3.0 * temp_j;
@@ -533,11 +527,12 @@ namespace opt_planner
     for (int i = 0; i < q.cols() - 1; i++)
     {
       Eigen::Vector3d vi = (q.col(i + 1) - q.col(i)) / ts;
+      // 公式为 vi = (q(i+1) - qi) / deltat
 
       //cout << "temp_v * vi=" ;
       for (int j = 0; j < 3; j++)
       {
-        if (vi(j) > max_vel_)
+        if (vi(j) > max_vel_) // 若速度分量超出阈值（|v| > max_vel_），代价为平方惩罚
         {
           // cout << "fuck VEL" << endl;
           // cout << vi(j) << endl;
@@ -854,10 +849,10 @@ namespace opt_planner
 
   bool BsplineOptimizer::BsplineOptimizeTrajRebound(Eigen::MatrixXd &optimal_points, double ts, const VecCube& corridor)
   {
+    /* 设置时间区间间隔 */
     setBsplineInterval(ts);
-    std::cout << "1" << std::endl;
+    /* 设置障碍物约束 */
     setBsplineCorridor(corridor);
-    std::cout << "2" << std::endl;
     bool flag_success = rebound_optimize();
     optimal_points = cps_.points;
 
@@ -1052,7 +1047,7 @@ namespace opt_planner
   {
     // 将优化器提供的变量 x 复制到控制点容器 cps_.points 中
     // 控制点的更新从 3 * order_ 开始，跳过固定的前 order_ 个点，因为它们可能是边界条件，不需要优化
-    memcpy(cps_.points.data() + 3 * (order_ ), x, n * sizeof(x[0]));
+    memcpy(cps_.points.data() + 3 * (order_), x, n * sizeof(x[0]));
     // memcpy(cps_.points.data() , x, n * sizeof(x[0]));
     calcMeanDistance(); // 计算控制点之间的平均距离，可能用于归一化或成本项的计算
     /* ---------- evaluate cost and gradient ---------- */
@@ -1070,9 +1065,9 @@ namespace opt_planner
     Eigen::MatrixXd g_distance = Eigen::MatrixXd::Zero(3, cps_.size);
     Eigen::MatrixXd g_feasibility = Eigen::MatrixXd::Zero(3, cps_.size);
 
-    calcSmoothnessCost(cps_.points, f_smoothness, g_smoothness);
-    calcDistanceCostRebound(cps_.points, f_distance, g_distance, boxes);
-    calcFeasibilityCost(cps_.points, f_feasibility, g_feasibility);
+    calcSmoothnessCost(cps_.points, f_smoothness, g_smoothness); // 计算平滑项
+    calcDistanceCostRebound(cps_.points, f_distance, g_distance, boxes); // 计算避障约束项
+    calcFeasibilityCost(cps_.points, f_feasibility, g_feasibility); // 计算动力学约束项
 
     /* 计算综合代价 f_combine，通过线性组合三个成本项得到 */
     f_combine = lambda1_ * f_smoothness + new_lambda2_ * f_distance + lambda3_ * f_feasibility;

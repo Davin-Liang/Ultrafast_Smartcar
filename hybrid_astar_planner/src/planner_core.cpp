@@ -43,6 +43,8 @@
 #include <math/vec2d.h>
 #include <math/math_utils.h>
 
+#include <memory>  // 必须包含头文件
+
 PLUGINLIB_EXPORT_CLASS(hybrid_astar_planner::HybridAStarPlanner, nav_core::BaseGlobalPlanner)//注册为类插件的声明
 
 namespace hybrid_astar_planner {
@@ -67,7 +69,8 @@ void HybridAStarPlanner::initialize(std::string name, costmap_2d::Costmap2D *_co
     ros::NodeHandle nh2("~/");
     ros::NodeHandle private_nh("~/" + name);
 
-    bspline_optimizer_rebound_.reset(new opt_planner::BsplineOptimizer);
+    // bspline_optimizer_rebound_.reset(new opt_planner::BsplineOptimizer);
+    bspline_optimizer_rebound_ = std::make_shared<opt_planner::BsplineOptimizer>();
     bspline_optimizer_rebound_->setParam(private_nh);
 
     nh2.param("use_hybrid_astar", use_hybrid_astar, true);
@@ -91,9 +94,11 @@ void HybridAStarPlanner::initialize(std::string name, costmap_2d::Costmap2D *_co
     make_plan_srv_ = private_nh.advertiseService("make_plan", &HybridAStarPlanner::makePlanService, this);
     corridor_pub_ = private_nh.advertise<visualization_msgs::MarkerArray>("corridor_vis", 1);
     path_pub = private_nh.advertise<nav_msgs::Path>("control_points_path", 1);
-    plan_pub_bspline = private_nh.advertise<nav_msgs::Path>("plan_bspline", 1);
+    plan_pub_bspline = private_nh.advertise<nav_msgs::Path>("plan_bspline", 1); // plan_bspline
   }
   initialized_ = true;
+
+  ROS_INFO("finish initial!");
 }//end of constructor function HybridAStarPlanner
 
 HybridAStarPlanner::~HybridAStarPlanner() {
@@ -127,13 +132,23 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
                    goal.pose.position.y,
                    tf::getYaw(goal.pose.orientation));
 
-  Expander* _planner;
+  // Expander* _planner;
 
-  // ROS_INFO("the resolution of cost map: %f ",costmap->getResolution());
-  if (use_hybrid_astar)
-    _planner = new hybridAstar(frame_id_,costmap);
-  else
-    _planner = new astar(frame_id_,costmap);
+  // // ROS_INFO("the resolution of cost map: %f ",costmap->getResolution());
+  // if (use_hybrid_astar)
+  //   _planner = new hybridAstar(frame_id_,costmap);
+  // else
+  //   _planner = new astar(frame_id_,costmap);
+
+  // 将原始指针替换为 unique_ptr
+  std::shared_ptr<Expander> _planner;
+
+  // 根据条件创建对象
+  if (use_hybrid_astar) {
+      _planner = std::make_shared<hybridAstar>(frame_id_, costmap);
+  } else {
+      _planner = std::make_shared<astar>(frame_id_, costmap);
+  }
 
   /* 检查设定的目标点参数是否合规 */
   if ( !(checkStartPose(start) && checkgoalPose(goal)) ) 
@@ -146,6 +161,7 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
   /* ------------------------------------生成Hybird A*前端全局路径------------------------------------ */
   /* ----------------------------------------------------------------------------------------------- */
   visualization_msgs::MarkerArray AstarpathNodes;
+  const auto start_timestamp = std::chrono::system_clock::now();
   if( !_planner->calculatePath(start, 
                               goal, 
                               costmap->getSizeInCellsX(), 
@@ -154,16 +170,20 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
                               path_vehicles_pub_, 
                               AstarpathNodes) ) 
   {
-    if (_planner != nullptr)
-      delete _planner;
+    // if (_planner != nullptr)
+    //   delete _planner;
 
     return false; // 代表规划失败
   }
 
-  if (_planner != nullptr)
-    delete _planner;
+  // if (_planner != nullptr)
+  //   delete _planner;
 
+  const auto end_timestamp = std::chrono::system_clock::now();
+  std::chrono::duration<double> diff = end_timestamp - start_timestamp; 
+  std::cout << "指标：生成初始路径所花费的时间: " << diff.count() * 1000.0 <<" ms."<< std::endl; // 记录时间，输出生成速度信息所需的总时间
   std::cout << "规划出来的初始全局路径一共有 " << plan_.size() << " 个轨迹点！" << std::endl;
+  std::cout << "指标：路径长度 = " << calculatePathLength(plan_) <<" m"<< std::endl;
 
   /* ----------------------------------------------------------------------------------------------- */
   /* --------------------------------------------分割路径-------------------------------------------- */
@@ -232,7 +252,7 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
     }
 
     /* 确定时间区间的大小 */
-    double ts = distance > 0.1 ? (control_point_distance_ / max_vel_ * 1.5) 
+    double ts = distance > 0.1 ? (control_point_distance_ / max_vel_ * 1.55) 
                                : (control_point_distance_ / max_vel_ * 5);
 
     /* 初始化起点和终点的速度和加速度约束 */
@@ -245,7 +265,7 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
     Eigen::MatrixXd ctrl_pts;
     /* B样条曲线拟合 */
     opt_planner::UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, &ctrl_pts);
-    publishPathFromCtrlPts(ctrl_pts);
+    // publishPathFromCtrlPts(ctrl_pts);
     bspline_optimizer_rebound_->initControlPoints(ctrl_pts, true);
 
     Timer time_bef_optimization;
@@ -256,7 +276,7 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
 
     if (!optimization_success)
     {
-      ROS_ERROR("OPTIMIZE failed!");
+      ROS_ERROR("B样条曲线优化失败!");
       std::cout << "OPTIMIZE failed in iteration: " << i << std::endl;
 
       return false;
@@ -270,7 +290,7 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
       BSplineSmooth_set.emplace_back(pt); // 得到优化后的路径
     }
   }
-  std::cout << "成功优化所有路径样本路径" << std::endl;
+  std::cout << "成功优化所有路径样本路径！" << std::endl;
   
   double b_spline_length = 0;
   std::cout << " B 样条优化后的路径点一共有 " << BSplineSmooth_set.size() << " 个！" << std::endl;
@@ -283,12 +303,31 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
 
   /* 参数后期处理，发布到RViz上进行可视化 */
   publishPlan(plan_); // 发布初始的全局规划路径
-  publishPathNodes(plan_);
+  // publishPathNodes(plan_);
   publishPlan_bspline(BSplineSmooth_set); // 发布 B 样条优化后的路径
 
   plan.swap(plan_);
   return true; // 代表规划成功
 } /* end of makeplan */
+
+double HybridAStarPlanner::calculatePathLength(const std::vector<geometry_msgs::PoseStamped>& plan) {
+    double path_length = 0.0;
+    
+    if (plan.size() < 2) return 0.0;  // 至少需要两个点才能形成路径
+    
+    for (size_t i = 1; i < plan.size(); ++i) {
+        const auto& prev_pose = plan[i-1].pose.position;
+        const auto& curr_pose = plan[i].pose.position;
+        
+        // 计算相邻点之间的欧氏距离
+        double dx = curr_pose.x - prev_pose.x;
+        double dy = curr_pose.y - prev_pose.y;
+        
+        path_length += std::sqrt(dx*dx + dy*dy);
+    }
+    
+    return path_length;
+}
 
 bool HybridAStarPlanner::checkStartPose(const geometry_msgs::PoseStamped &start) 
 {
@@ -446,7 +485,7 @@ bool HybridAStarPlanner::GenerateSpeedAcceleration(HybridAStartResult* result)
 
 VecCube HybridAStarPlanner::corridorGeneration(const VectorVec3d &path_coord, int segment)
 {
-  VecCube SmoothPathcubeList;
+  // VecCube SmoothPathcubeList;
   VecCube bsplinecubeList;
   Cube lstcube;
   for (size_t i = 0; i < path_coord.size(); ++i)
@@ -458,9 +497,9 @@ VecCube HybridAStarPlanner::corridorGeneration(const VectorVec3d &path_coord, in
 
     if (result.second == false) // 当前路径点膨胀一次之后的cube被上一个cube完全包含,对该点进行剪枝
       continue;
-    cube = result.first;
+    // cube = result.first;
     lstcube = cube;
-    SmoothPathcubeList.push_back(cube);
+    // SmoothPathcubeList.push_back(cube);
   }
 
   return bsplinecubeList;
@@ -500,9 +539,7 @@ Cube HybridAStarPlanner::generateCube(Vec3d pt)
 
 std::pair<Cube, bool> HybridAStarPlanner::inflateCube(const Cube &cube, const Cube &lstcube)
 {
-  Cube cubeMax = cube;
-
-  // Inflate sequence: right, left, front, back, above, below                                                                              
+  Cube cubeMax = cube;                                                                              
   Eigen::MatrixXi vertex_idx = Eigen::MatrixXi::Zero(8, 3);
   
   // 判断当前的路径点是否触碰障碍,因为传入的cube是一个点
@@ -516,30 +553,20 @@ std::pair<Cube, bool> HybridAStarPlanner::inflateCube(const Cube &cube, const Cu
     Vec2i map_pt_index(0, 0);
     unsigned int temp1, temp2;
     if (!costmap->worldToMap(coord_x, coord_y, temp1, temp2))
-      std::cout << "世界坐标超出的地图边界1" << std::endl;
+      std::cout << "[Ufs-Planner]: 世界坐标超出了地图边界！" << std::endl;
     map_pt_index[0] = temp1;
     map_pt_index[1] = temp2;
     
     if (HasObstacle(map_pt_index[0], map_pt_index[1]))
     {       
-      std::cout << "[Planning Node] 规划出来的路径有轨迹点在障碍物上！" << std::endl;
+      std::cout << "[Ufs-Planner]: 规划出来的路径有轨迹点在障碍物上！" << std::endl;
       
       return std::make_pair(cubeMax, false);
     }
     
     vertex_idx.row(i).head(2) = map_pt_index;  // 若未触碰障碍，将该点的 x, y 坐标赋值给 vertex_idx 的对应行,等待膨胀
   }
-
-  /*
-              P4------------P3 
-              /|           /|              ^
-             / |          / |              | z
-           P1--|---------P2 |              |
-            |  P8--------|--p7             |
-            | /          | /               /--------> y
-            |/           |/               /  
-           P5------------P6              / x
-  */           
+      
   /* 开始膨胀 */
   int id_x, id_y;
   bool collide;
@@ -839,10 +866,10 @@ void HybridAStarPlanner::PublishCorridor(const std::vector<Cube> &corridor)
   mk.pose.orientation.z = 0.0;
   mk.pose.orientation.w = 1.0;
 
-  mk.color.a = 0.2; // 0.08
-  mk.color.r = 0.0;
-  mk.color.g = 1.0;
-  mk.color.b = 1.0;
+  mk.color.a = 0.08; // 0.08
+  mk.color.r = 100.0;
+  mk.color.g = 200.0;
+  mk.color.b = 0.0;
 
   int idx = 0;
   for(int i = 0; i < int(corridor.size()); i++)
@@ -932,18 +959,26 @@ void HybridAStarPlanner::publishPlan_bspline(const vector<Eigen::Vector3d, Eigen
   nav_msgs::Path nav_path;
   geometry_msgs::PoseStamped pose_stamped;
 
-  for (size_t index = 0; index < path.size(); ++index) {
+  for (size_t index = 0; index < path.size(); ++index) 
+  {
     const auto &pose= path[index];
     double head_angle = path[index].z();
+    std::cout << "path[index].z = " << head_angle << std::endl;
     double tracking_angle;
-    if (index + 1 < path.size()) {
+    if (index + 1 < path.size()) 
+    {
       double diff_x = path[index+1].x() - path[index].x();
       double diff_y = path[index+1].y() - path[index].y();
       tracking_angle = std::atan2(diff_y, diff_x);
-    } else {
-      if (nav_path.poses.empty()) {
+    } 
+    else 
+    {
+      if (nav_path.poses.empty()) 
+      {
         tracking_angle = head_angle;
-      } else {
+      } 
+      else 
+      {
         tracking_angle = nav_path.poses.back().pose.position.z;
       }
     }
@@ -955,7 +990,7 @@ void HybridAStarPlanner::publishPlan_bspline(const vector<Eigen::Vector3d, Eigen
     pose_stamped.pose.position.x = pose.x();
     pose_stamped.pose.position.y = pose.y();
     pose_stamped.pose.position.z = gear;
-    pose_stamped.pose.orientation = tf::createQuaternionMsgFromYaw(pose.z());//创建四元数
+    pose_stamped.pose.orientation = tf::createQuaternionMsgFromYaw(pose.z()); // 创建四元数
 
     nav_path.poses.emplace_back(pose_stamped);
   }

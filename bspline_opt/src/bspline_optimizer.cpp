@@ -24,7 +24,7 @@ namespace opt_planner
     lambda3_ = 0.1;
     lambda4_ = 1.6;
 
-    dist0_ = 0.5;
+    dist0_ = 1.0;
     max_vel_ = 1.0;
     max_acc_ = 1.0;
     max_curvature_ = 0.1;
@@ -1071,7 +1071,6 @@ namespace opt_planner
 
     /* 计算综合代价 f_combine，通过线性组合三个成本项得到 */
     f_combine = lambda1_ * f_smoothness + new_lambda2_ * f_distance + lambda3_ * f_feasibility;
-    // printf("origin %f %f %f %f\n", f_smoothness, f_distance, f_feasibility, f_combine);
 
     /* 综合梯度 grad_3D 的计算 */
     Eigen::MatrixXd grad_3D = lambda1_ * g_smoothness + new_lambda2_ * g_distance + lambda3_ * g_feasibility;

@@ -37,6 +37,9 @@
 #include "planner_core.h"
 #include "node3d.h"
 #include <tf/transform_datatypes.h>
+#include <math/vec2d.h>
+#include <math/math_utils.h>
+
 namespace hybrid_astar_planner {
   
 void HybridAStarPlanner::publishPlan(const std::vector<geometry_msgs::PoseStamped>& path) {
@@ -48,15 +51,45 @@ void HybridAStarPlanner::publishPlan(const std::vector<geometry_msgs::PoseStampe
   //create a message for the plan
   geometry_msgs::PoseStamped transform_path;
   nav_msgs::Path gui_path;
+
   gui_path.poses.resize(path.size());
 
   gui_path.header.frame_id = frame_id_;
   gui_path.header.stamp = ros::Time::now();
 
   // Extract the plan in world co-ordinates, we assume the path is all in the same frame
-  for (size_t i = 0; i < path.size(); ++i) {
+  for (size_t i = 0; i < path.size(); ++i) 
+  {
     transform_path.pose.position = path[i].pose.position;
-    gui_path.poses[i] = transform_path;//
+    transform_path.pose.orientation = path[i].pose.orientation;
+    gui_path.poses[i] = transform_path;
+
+    double head_angle = path[i].pose.position.z;
+    double tracking_angle;
+
+    if (i + 1 < path.size()) 
+    {
+      double diff_x = path[i+1].pose.position.x - path[i].pose.position.x;
+      double diff_y = path[i+1].pose.position.y - path[i].pose.position.y;
+      tracking_angle = std::atan2(diff_y, diff_x);
+    } 
+    else 
+    {
+      if (gui_path.poses.empty()) 
+      {
+        tracking_angle = head_angle;
+      } 
+      else 
+      {
+        tracking_angle = gui_path.poses.back().pose.position.z;
+      }
+    }
+    int gear = 
+      std::abs(common::math::NormalizeAngle(tracking_angle - head_angle)) <
+      (M_PI_2)? 1 : 0;    
+
+
+    gui_path.poses[i].pose.position.z = gear;
   }
 
   plan_pub_.publish(gui_path);

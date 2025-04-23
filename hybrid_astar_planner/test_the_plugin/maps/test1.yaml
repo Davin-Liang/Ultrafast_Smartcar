@@ -1,0 +1,7 @@
+image: /home/stitch/test/test2_ws/src/Ultrafast_Smartcar/hybrid_astar_planner/test_the_plugin/maps/test1.pgm
+resolution: 0.050000
+origin: [-50.000000, -50.000000, 0.000000]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196
+

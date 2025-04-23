@@ -1,0 +1,37 @@
+<launch>
+
+  <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen" clear_params="true">
+    <param name="base_global_planner" value="hybrid_astar_planner/HybridAStarPlanner" />
+    <!-- <param name="base_local_planner" value="teb_local_planner/TebLocalPlannerROS" /> -->
+
+    <rosparam file="$(find racebot_gazebo)/config/teb/costmap_common_params.yaml" command="load" ns="global_costmap" />
+    <rosparam file="$(find racebot_gazebo)/config/teb/costmap_common_params.yaml" command="load" ns="local_costmap" />
+    <rosparam file="$(find racebot_gazebo)/config/teb/local_costmap_params.yaml" command="load" />
+    <rosparam file="$(find racebot_gazebo)/config/teb/global_costmap_params.yaml" command="load" />
+
+    <rosparam file="$(find racebot_gazebo)/config/teb/move_base_params.yaml" command="load" />
+    <rosparam file="$(find racebot_gazebo)/config/teb/base_global_planner_params.yaml" command="load" />
+    <!-- <rosparam file="$(find racebot_gazebo)/config/teb/teb_local_planner_params.yaml" command="load" /> -->
+
+    <param name="base_local_planner" value="rpp_controller/RPPController" />
+    <rosparam file="$(find hybrid_astar_planner)/test_the_plugin/param/rpp_controller_params.yaml" command="load" />
+
+    <rosparam file="$(find hybrid_astar_planner)/test_the_plugin/param/ufs_planner_params.yaml" command="load" /> 
+  </node>
+
+    <!-- 纯激光定位 -->
+    <!-- <node pkg="jie_ware" type="lidar_loc" name="lidar_loc" >
+        <param name="base_frame" value="base_footprint" />
+        <param name="odom_frame" value="odom" />
+        <param name="laser_frame" value="lidar" />
+        <param name="laser_topic" value="scan" />
+    </node>
+    <node pkg="jie_ware" type="costmap_cleaner" name="costmap_cleaner" /> -->
+
+    <!-- AMCL 定位 -->
+    <include file="$(find racebot_gazebo)/launch/amcl.launch" />
+
+    <node name="tf_broadcaster" pkg="hybrid_astar_planner" type="tf_test_broadcaster" output="screen" />
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find hybrid_astar_planner)/test_the_plugin/maps/warehouse.yaml" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hybrid_astar_planner)/test_the_plugin/launch/config.rviz" />
+</launch>

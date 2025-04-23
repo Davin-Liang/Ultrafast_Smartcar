@@ -7,6 +7,14 @@
 #include "node3d.h"
 #include <visualization_msgs/MarkerArray.h>
 #include <ros/publisher.h>
+#include "astar.h"
+
+
+#include <vector>                        // 标准库 vector
+#include <geometry_msgs/PoseStamped.h>   // geometry_msgs::PoseStamped
+#include <visualization_msgs/MarkerArray.h> // visualization_msgs::MarkerArray
+#include <cmath> 
+
 // #define TEST
 #define point_accuracy 0.5
 #define theta_accuracy 2
@@ -36,7 +44,8 @@ class hybridAstar : public Expander
         nh.getParam("UfsPlaner/heading", heading_);
         deltaHeadingRad_ = 2 * 3.14 / (double)heading_;
 
-
+        // path_vehicles_pub_ = nh.advertise<visualization_msgs::MarkerArray>("pathVehicle", 1);
+        // astar_planner_ = new astar(frame_id_,costmap);
         // std::cout << "my_param = " << my_param << std::endl;
     }
 
@@ -107,6 +116,8 @@ class hybridAstar : public Expander
     inline void DynamicModel(const double &step_size, const double &phi, double &x, double &y, double &theta) const;
     static inline double Mod2Pi(const double &x);
 
+    double calculatePathLength(const std::vector<geometry_msgs::PoseStamped>& plan);
+
 
     std::unique_ptr<GridSearch> grid_a_star_heuristic_generator_;
 
@@ -122,6 +133,9 @@ class hybridAstar : public Expander
     int iterations_ = 0;
     int heading_ = 0;
     double deltaHeadingRad_ = 0;
+
+    // Expander* astar_planner_;
+    // ros::Publisher path_vehicles_pub_;
 };
 
 

@@ -196,6 +196,7 @@ class HybridAStarPlanner : public nav_core::BaseGlobalPlanner {
 
         void publishPlan_bspline(const vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>& path);
         void publishPathFromCtrlPts(const Eigen::MatrixXd& ctrl_pts);
+        double calculatePathLength(const std::vector<geometry_msgs::PoseStamped>& plan);
 
         /* 内部变量 */
         visualization_msgs::MarkerArray corridor_array;
@@ -212,7 +213,9 @@ class HybridAStarPlanner : public nav_core::BaseGlobalPlanner {
      
         double delta_t_ = 0.0;
         std::pair<bool, bool> gear_ = {false, false};
-        opt_planner::BsplineOptimizer::Ptr bspline_optimizer_rebound_;
+        // opt_planner::BsplineOptimizer::Ptr bspline_optimizer_rebound_;
+
+        std::shared_ptr<opt_planner::BsplineOptimizer> bspline_optimizer_rebound_;
         // PlanParameters pp_; // 统一管理参数的结构体
 };
 

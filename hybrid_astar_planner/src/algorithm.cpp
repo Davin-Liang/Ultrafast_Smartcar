@@ -39,6 +39,8 @@
 #include "ReedsShepp.h"
 #include <iostream>
 #include <tf/transform_datatypes.h>
+#include <math.h>
+
 // #include <geometry_msgs/PoseStamped.h>
 // #include <costmap_2d/costmap_2d.h>
 namespace hybrid_astar_planner {
@@ -83,24 +85,33 @@ void  updateH(Node3D& start, const Node3D& goal, Node2D* nodes2D,
   float reedsSheppCost = 0;
   float twoDCost = 0;
   float twoDoffset = 0;
-  #ifdef use_ReedsShepp_heuristic
+  // #ifdef use_ReedsShepp_heuristic
   // 假如车子可以后退，则可以启动Reeds-Shepp 算法
-  if (reverse && !Constants::dubins) 
-  {
-    //reeds_shepp算法还还存在问题，启用可能会造成搜寻路径增加等问题
+  // if (reverse && !Constants::dubins) 
+  // {
+  //   //reeds_shepp算法还还存在问题，启用可能会造成搜寻路径增加等问题
 
     ompl::base::ReedsSheppStateSpace reedsSheppPath(Constants::r);
     State* rsStart = (State*)reedsSheppPath.allocState();
     State* rsEnd = (State*)reedsSheppPath.allocState();
     rsStart->setXY(start.getX(), start.getY());
-    rsStart->setYaw(start.(deltaHeadingRad));
+    rsStart->setYaw(start.getT(deltaHeadingRad));
     rsEnd->setXY(goal.getX(), goal.getY());
     rsEnd->setYaw(goal.getT(deltaHeadingRad));
     reedsSheppCost = reedsSheppPath.distance(rsStart, rsEnd) * 1.1 + 0.04 * start.getCost();
 
-  }
-  #endif
+    // double dx = goal.getX() - start.getX();
+    // double dy = start.getY() - start.getY();
+    // double dz = p2.z - p1.z;
+
+    // 累加距离（通常路径是平面运动，可以忽略 z）
+    // inspireAstar = sqrt(dx*dx + dy*dy);
+
+  // }
+  // #endif
   start.setH(std::max(reedsSheppCost, inspireAstar));//将两个代价中的最大值作为启发式值
+  // start.setH(reedsSheppCost);
+  // start.setH(inspireAstar);
 }
 
 

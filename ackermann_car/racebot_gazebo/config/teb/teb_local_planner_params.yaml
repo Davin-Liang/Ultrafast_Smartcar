@@ -1,4 +1,5 @@
 TebLocalPlannerROS:
+  # global_plan_topic: "/move_base/HybridAStarPlanner/plan_bspline"
 
   odom_topic: odom
   map_frame: /map

@@ -9,12 +9,12 @@
 
 namespace mpc_car {
 
-static constexpr int n = 4;  // state [x y phi v]，状态的维度
+static constexpr int n = 6;  // state [x y phi v]，状态的维度
 static constexpr int m = 2;  // input [a delta]，输入的维度
 typedef Eigen::Matrix<double, n, n> MatrixA;//线性化时的A
 typedef Eigen::Matrix<double, n, m> MatrixB;//线性化时的B
-typedef Eigen::Vector4d VectorG;//线性化时的G
-typedef Eigen::Vector4d VectorX;//状态向量
+typedef Eigen::Vector6d VectorG;//线性化时的G
+typedef Eigen::Vector6d VectorX;//状态向量
 typedef Eigen::Vector2d VectorU;//输入向量
 
 class MpcCar {
@@ -28,7 +28,7 @@ class MpcCar {
   int N_; // 预测的步长
   double rhoN_; // 最终状态的权重
 
-  double v_max_, a_max_, delta_max_, ddelta_max_; // bound约束
+  double v_max_, a_max_, da_max_, delta_max_, ddelta_max_; // bound约束
   double delay_;//延迟
 
   bool path_direction_ = 1;//1表示前进
@@ -77,41 +77,106 @@ class MpcCar {
    * */
   //和input相关的约束
   Eigen::SparseMatrix<double> Cu_, lu_, uu_;  // [a delta] constrains
-  Eigen::SparseMatrix<double> Qx_; // 这个变量是 Q 变量
+  Eigen::SparseMatrix<double> Qx_; // 这个变量是 Q 变量 状态跟踪权重 (6x6)
+  Eigen::SparseMatrix<double> S_;   // 输入增量权重 (2x2)
 
-  /* 在某点处线性化 */
+  // 参考轨迹容器（每个时刻的扩展状态 [x_ref, y_ref, v_ref, theta_ref, 0, 0]）
+  std::vector<Eigen::VectorXd> X_ref_; 
+
+  // /* 在某点处线性化 */
+  // void linearization(const double& phi,
+  //                    const double& v,
+  //                    const double& delta) 
+  // {
+  //   // x_{k+1} = Ad * x_{k} + Bd * u_k + gd
+  //   /* TODO: 对 Ad_(A_k), Bd_(B_k), gd_(g_k) 矩阵进行赋值 */
+  //   // 矩阵初始化
+  //   Ad_.setIdentity();
+  //   Bd_.setZero();
+  //   gd_.setZero();
+
+  //   // 对 Ad_(A_k) 矩阵进行赋值，参考 A_c 状态矩阵的公式
+  //   MatrixA Ac_; // 中间矩阵，最后赋值回给 Ad_ 矩阵
+  //   Ac_.setZero();
+  //   Ac_.coeffRef(0, 2) = -1 * v * sin(phi);
+  //   Ac_.coeffRef(0, 3) = cos(phi);
+  //   Ac_.coeffRef(1, 2) = v * cos(phi);
+  //   Ac_.coeffRef(1, 3) = sin(phi);
+  //   Ac_.coeffRef(2, 3) = tan(delta)/ll_;
+  //   Ad_ += Ac_ * dt_; // 参考 A_k = I + T_s * A_c
+
+  //   // 对 Bd_(B_k) 矩阵进行赋值，参考 B_c 矩阵的公式
+  //   Bd_.coeffRef(3, 0) = 1;
+  //   Bd_.coeffRef(2, 1) = v/(ll_ * cos(delta) * cos(delta));
+  //   Bd_ *= dt_; // 参考 B_k = T_s * B_c
+
+  //   // 对 gd_(g_k) 进行赋值，参考 g_c 矩阵的公式
+  //   gd_(0) = v*phi*sin(phi);
+  //   gd_(1) = -1*v*phi*cos(phi);
+  //   gd_(2) = -1*v*delta/(ll_ * cos(delta) * cos(delta));
+  //   gd_(3) = 0;
+  //   gd_ *= dt_; // g_k = T_s * g_c
+
+  //   return;
+  // }
+
+  /* 在某点处线性化（适配输入增量控制） */
   void linearization(const double& phi,
-                     const double& v,
-                     const double& delta) 
+                    const double& v,
+                    const double& delta) 
   {
-    // x_{k+1} = Ad * x_{k} + Bd * u_k + gd
-    /* TODO: 对 Ad_(A_k), Bd_(B_k), gd_(g_k) 矩阵进行赋值 */
-    // 矩阵初始化
-    Ad_.setIdentity();
+    // 扩展后的状态维度：4（原状态） + 2（历史输入 a_{k-1}, δ_{k-1}） = 6
+    const int extended_dim = 6; 
+    const int control_dim = 2;
+
+    // 重置矩阵维度
+    Ad_.resize(extended_dim, extended_dim);
+    Bd_.resize(extended_dim, control_dim);
+    gd_.resize(extended_dim);
+
+    Ad_.setZero();
     Bd_.setZero();
-    gd_.setZero();
+    gd_.setZero(); // 增量控制中 g_k 被省略
 
-    // 对 Ad_(A_k) 矩阵进行赋值，参考 A_c 状态矩阵的公式
-    MatrixA Ac_; // 中间矩阵，最后赋值回给 Ad_ 矩阵
-    Ac_.setZero();
-    Ac_.coeffRef(0, 2) = -1 * v * sin(phi);
-    Ac_.coeffRef(0, 3) = cos(phi);
-    Ac_.coeffRef(1, 2) = v * cos(phi);
-    Ac_.coeffRef(1, 3) = sin(phi);
-    Ac_.coeffRef(2, 3) = tan(delta)/ll_;
-    Ad_ += Ac_ * dt_; // 参考 A_k = I + T_s * A_c
+    /*-----------------------------------------------
+    1. 计算原系统离散化后的 A_k 和 B_k
+    ------------------------------------------------*/
+    // 连续时间雅可比矩阵 A_c
+    Eigen::Matrix4d A_continuous;
+    A_continuous.setZero();
+    A_continuous(0, 2) = -v * sin(phi);    // ∂ẋ/∂θ = -v*sin(phi)
+    A_continuous(0, 3) = cos(phi);         // ∂ẋ/∂v = cos(phi)
+    A_continuous(1, 2) = v * cos(phi);     // ∂ẏ/∂θ = v*cos(phi)
+    A_continuous(1, 3) = sin(phi);         // ∂ẏ/∂v = sin(phi)
+    A_continuous(2, 3) = tan(delta)/ll_;   // ∂θ̇/∂v = tan(δ)/L
 
-    // 对 Bd_(B_k) 矩阵进行赋值，参考 B_c 矩阵的公式
-    Bd_.coeffRef(3, 0) = 1;
-    Bd_.coeffRef(2, 1) = v/(ll_ * cos(delta) * cos(delta));
-    Bd_ *= dt_; // 参考 B_k = T_s * B_c
+    // 离散化后的 A_k = I + A_c * Δt
+    Eigen::Matrix4d A_discrete = Eigen::Matrix4d::Identity() + A_continuous * dt_;
 
-    // 对 gd_(g_k) 进行赋值，参考 g_c 矩阵的公式
-    gd_(0) = v*phi*sin(phi);
-    gd_(1) = -1*v*phi*cos(phi);
-    gd_(2) = -1*v*delta/(ll_ * cos(delta) * cos(delta));
-    gd_(3) = 0;
-    gd_ *= dt_; // g_k = T_s * g_c
+    // 连续时间输入矩阵 B_c
+    Eigen::Matrix<double, 4, 2> B_continuous;
+    B_continuous.setZero();
+    B_continuous(3, 0) = 1.0;  // ∂v̇/∂a = 1（加速度输入）
+    B_continuous(2, 1) = v / (ll_ * pow(cos(delta), 2));  // ∂θ̇/∂δ = v/(L*cos²δ)
+
+    // 离散化后的 B_k = B_c * Δt
+    Eigen::Matrix<double, 4, 2> B_discrete = B_continuous * dt_;
+
+    /*-----------------------------------------------
+    2. 构建扩展后的增量控制模型矩阵
+      Ad_ = [[A_k, B_k], 
+            [ 0,   I]]
+      Bd_ = [[B_k],
+            [  I]]
+    ------------------------------------------------*/
+    // 填充 Ad_
+    Ad_.block(0, 0, 4, 4) = A_discrete;        // 左上块：原状态动态
+    Ad_.block(0, 4, 4, 2) = B_discrete;        // 右上块：历史输入的影响
+    Ad_.block(4, 4, 2, 2) = Eigen::Matrix2d::Identity(); // 右下块：历史输入的保持
+
+    // 填充 Bd_
+    Bd_.block(0, 0, 4, 2) = B_discrete;        // 上部：原输入通道
+    Bd_.block(4, 0, 2, 2) = Eigen::Matrix2d::Identity(); // 下部：增量输入的积分
 
     return;
   }
@@ -144,18 +209,18 @@ class MpcCar {
       // std::cout << "s_.arcL() - s0 = " << s_.arcL() - s0 << std::endl;
       // std::cout << "s_.arcL() - s0 = " << s_.arcL() - s0 << std::endl;
       // std::cout << "s_.arcL() - s0 = " << s_.arcL() - s0 << std::endl;
-      if (s_.arcL() - s0 > 1.0)
-      {
+      // if (s_.arcL() - s0 > 1.0)
+      // {
         v = desired_v_;
         delta = atan2(ll_ * dphi / (v), 1.0);// ERROR?这里不是应该再除以一个v吗？
         // if(path_direction_ == 0) delta *= -1; //倒车
         // delta = atan2(ll_ * dphi , 1.0);// ERROR?这里不是应该再除以一个v吗？
-      }
-      else
-      {
-        v = (s_.arcL() - s0) / 1.0 * desired_v_;
-        delta = atan2(ll_ * dphi / (v) , 1.0);
-      }
+      // }
+      // else
+      // {
+      //   v = (s_.arcL() - s0) / 1.0 * desired_v_;
+      //   delta = atan2(ll_ * dphi / (v) , 1.0);
+      // }
       
     }
   }
@@ -258,28 +323,44 @@ class MpcCar {
     // set size of sparse matrices
     P_.resize(m * N_, m * N_);
     q_.resize(m * N_, 1);
-    Qx_.resize(n * N_, n * N_);
+    
+
+    /*---------------------*/
+    /* 设置状态跟踪权重 Qx_ */
+    /*--------------------*/
     // stage cost
     // every        1 0 0   0  
     //        小Q = 0 1 0   0
     //              0 0 rho 0
     //              0 0 0   0
     //那就是看你cost function怎么设计了，前面的两个1是x和y的位置误差，rho是对phi，对方向的跟踪？对v没有跟踪
-    // 对 Qx_(Q) 矩阵进行赋值
-    Qx_.setIdentity(); // 初始化为对角矩阵
-    for (int i = 1; i < N_; ++i) // 设置每一个小矩阵
+    Qx_.resize(n * N_, n * N_);
+    for (int i = 0; i < N_; ++i) 
     {
-      Qx_.coeffRef(i * n - 4, i * n - 4) = 8;
-      Qx_.coeffRef(i * n - 3, i * n - 3) = 8;
-      Qx_.coeffRef(i * n - 2, i * n - 2) = rho_;
-      Qx_.coeffRef(i * n - 1, i * n - 1) = 4;
+      Qx_.coeffRef(6*i + 0, 6*i + 0) = 10.0; // x 权重
+      Qx_.coeffRef(6*i + 1, 6*i + 1) = 10.0; // y 权重
+      Qx_.coeffRef(6*i + 2, 6*i + 2) = 1.0;  // v 权重
+      Qx_.coeffRef(6*i + 3, 6*i + 3) = 5.0;  // theta 权重
+      // a_prev 和 delta_prev 的跟踪权重设为0（不跟踪历史输入）
     }
-    //这下面是设置 Qx_(Q) 里面的右下角的小矩阵
-    Qx_.coeffRef(N_ * n - 4, N_ * n - 4) = rhoN_;
-    Qx_.coeffRef(N_ * n - 3, N_ * n - 3) = rhoN_;
-    Qx_.coeffRef(N_ * n - 2, N_ * n - 2) = 100; // rhoN_ * rho_
+    /*------------------*/
+    /*------------------*/
+    /*------------------*/
     
-    int n_cons = 4;  // [v a delta ddelta]，约束的维度。对每一个预测周期都需要约束
+    /*-----------------
+    设置输入增量权重 S_ 
+    -------------------*/
+    S_.resize(2 * N_, 2 * N_);
+    for (int i = 0; i < N_; ++i) 
+    {
+      S_.coeffRef(2*i + 0, 2*i + 0) = 0.1; // Δa 权重
+      S_.coeffRef(2*i + 1, 2*i + 1) = 0.1; // Δδ 权重
+    }
+    /*------------------*/
+    /*------------------*/
+    /*------------------*/
+
+    int n_cons = 5;  // [v a da delta ddelta]，约束的维度。对每一个预测周期都需要约束
     // 控制约束矩阵的维度
     A_.resize(n_cons * N_, m * N_); // 32O, 160
     l_.resize(n_cons * N_, 1);
@@ -329,6 +410,15 @@ class MpcCar {
       lx_.coeffRef(i, 0) = -v_max_; 
       ux_.coeffRef(i, 0) = v_max_;
     }
+
+    for (int i = 0; i < N_; ++i) {
+      // 速度约束：v_min ≤ v_k ≤ v_max
+      // 在扩展状态中，v 是第3个元素（索引2）
+      Cx_.coeffRef(i, n_extended * i + 2) = 1.0; 
+      lx_(i) = v_min_;
+      ux_(i) = v_max_;
+    }
+
     // set predict mats size
     predictState_.resize(N_);
     predictInput_.resize(N_);
@@ -365,7 +455,7 @@ class MpcCar {
     /* TODO: 在这里设置目标完成情况的参数的阈值 */
     if ((dx * dx + dy * dy) < 0.3 && 
         std::abs(v_norm) < 0.01 && 
-        std::abs(phi - yaw) < 0.5) 
+        std::abs(phi - yaw) < 0.1) 
       return true;
 
     return false;
@@ -395,6 +485,9 @@ class MpcCar {
 
       return 11;//表示已经到达终点了
     }
+
+    X_ref_.clear();
+
     // set BB, AA, gg
     Eigen::MatrixXd BB, AA, gg;
     BB.setZero(n * N_, m * N_);
@@ -407,6 +500,7 @@ class MpcCar {
     qx.resize(n * N_, 1);
     for (int i = 0; i < N_; ++i) 
     {
+      
       calLinPoint(s0, phi, v, delta); // 在 calLinPoint() 内改变的 phi, v, delta 的值
       if (phi - last_phi > M_PI) 
       {
@@ -417,7 +511,16 @@ class MpcCar {
         phi += 2 * M_PI;
       }
       last_phi = phi;
+
+      /* 构建参考轨迹 X_ref_ */
+      Eigen::VectorXd z_ref(6);
+      Eigen::Vector2d xy_ref = s_(s0);
+      z_ref << xy_ref(0), xy_ref(1), phi, v, 0.0, 0.0;
+      X_ref_.push_back(z_ref);
+
+      /* 线性化 */
       linearization(phi, v, delta);//这些量都是当前状态所处轨迹上的点
+
       // calculate big state-space matrices
       /* *                BB                AA
        * x1    /       B    0  ... 0 \    /   A \
@@ -428,7 +531,7 @@ class MpcCar {
        *
        *     X = BB * U + AA * x0 + gg
        * */
-      /* TODO: 设置 BB AA gg 矩阵 */
+      /* 设置 BB AA gg 矩阵 */
       if (i == 0) 
       {
         BB.block(0, 0, n, m) = Bd_;
@@ -447,7 +550,7 @@ class MpcCar {
       }
       
       // TODO: 设置 qx 矩阵
-      Eigen::Vector2d xy = s_(s0);  // reference (x_r, y_r)
+      // Eigen::Vector2d xy = s_(s0);  // reference (x_r, y_r)
 
       // cost function should be represented as follows:
       /* *
@@ -462,10 +565,10 @@ class MpcCar {
             参考公式为 q_x = -Q^T * x_ref
             qx = -Qx_.toDense().block(n * i, n * i, 4, 4) transpose() * VectorX(xy(0), xy(1), phi, 0); */
       // 每次循环设置 qx 的一个子矩阵
-      qx.coeffRef(n*i + 0, 0) = -Qx_.coeffRef(n * i + 0, n * i + 0) * xy(0);
-      qx.coeffRef(n*i + 1, 0) = -Qx_.coeffRef(n * i + 1, n * i + 1) * xy(1);
-      qx.coeffRef(n*i + 2, 0) = -Qx_.coeffRef(n * i + 2, n * i + 2) * phi;
-      qx.coeffRef(n*i + 3, 0) = -Qx_.coeffRef(n * i + 3, n * i + 3) * v;
+      // qx.coeffRef(n*i + 0, 0) = -Qx_.coeffRef(n * i + 0, n * i + 0) * xy(0);
+      // qx.coeffRef(n*i + 1, 0) = -Qx_.coeffRef(n * i + 1, n * i + 1) * xy(1);
+      // qx.coeffRef(n*i + 2, 0) = -Qx_.coeffRef(n * i + 2, n * i + 2) * phi;
+      // qx.coeffRef(n*i + 3, 0) = -Qx_.coeffRef(n * i + 3, n * i + 3) * v;
 
       s0 += std::abs(desired_v_) * dt_; // 全部循环过后，得到期望进度
       s0 = s0 < s_.arcL() ? s0 : s_.arcL();
@@ -548,6 +651,156 @@ class MpcCar {
     }
 
     return ret;
+  }
+
+  int solveQP(const VectorX& x0_observe) 
+  {
+    x0_observe_ = x0_observe;
+    
+    /*-----------------------------------------------
+    1. 增量控制输入处理
+    ------------------------------------------------*/
+    // 不再直接操作 predictInput_，而是通过历史输入和增量更新
+    if (!historyInput_.empty()) 
+      historyInput_.pop_front();
+    
+    // 若预测输入非空，记录上一时刻的实际输入
+    if (!predictInput_.empty()) 
+    {
+      Eigen::Vector2d last_u = historyInput_.back();
+      last_u += predictInput_.front(); // u_{k} = u_{k-1} + Δu_k
+      historyInput_.push_back(last_u);
+    }
+
+    /*-----------------------------------------------
+    2. 输入约束调整（基于增量Δu） TODO:
+    ------------------------------------------------*/
+    // 控制输入增量约束 Δa 和 Δδ 的上下界
+    lu_.coeffRef(0, 0) = -da_max_ * dt_;   // Δa_min
+    uu_.coeffRef(0, 0) = da_max_ * dt_;    // Δa_max
+    lu_.coeffRef(1, 0) = -ddelta_max_ * dt_; // Δδ_min
+    uu_.coeffRef(1, 0) = ddelta_max_ * dt_;  // Δδ_max
+
+    /*-----------------------------------------------
+    - 检查是否到终点
+    ------------------------------------------------*/
+    VectorX x0 = x0_observe_;
+    if (check_goal(x0))
+    {
+      std::cout << "------------!!!!到达seg的终点!!!!-----------" << std::endl;
+      std::cout << "到达终点时的状态为：" << x0.transpose() << std::endl;
+
+      return 11;//表示已经到达终点了
+    }
+
+    /*-----------------------------------------------
+    3. 状态预测矩阵构建（适配扩展状态）
+    ------------------------------------------------*/
+    const int n_extended = 6; // 扩展状态维度：6（原状态4 + 历史输入2）
+    const int m = 2; // 控制输入维度 Δa, Δδ
+    
+    // 初始化矩阵维度
+    Eigen::MatrixXd BB, AA, gg;
+    BB.setZero(n_extended * N_, m * N_);
+    AA.setZero(n_extended * N_, n_extended);
+    gg.setZero(n_extended * N_, 1);
+
+    double s0 = s_.findS(x0.head(2)); // 这个是在整体路径上的进度，是一个长度值，不是百分比
+    double phi, v, delta;
+    double last_phi = x0(2);
+
+    // 获取当前扩展状态（包含历史输入）
+    VectorX x0_extended(n_extended);
+    x0_extended << x0_observe_, historyInput_.front(); // [x0; a_prev; δ_prev]
+
+    /*-----------------------------------------------
+    4. 构建增量控制的预测模型
+    ------------------------------------------------*/
+    for (int i = 0; i < N_; ++i) 
+    {
+      // 线性化点计算
+      calLinPoint(s0, phi, v, delta); // 在 calLinPoint() 内改变的 phi, v, delta 的值
+      if (phi - last_phi > M_PI) 
+      {
+        phi -= 2 * M_PI;
+      } 
+      else if (phi - last_phi < -M_PI) 
+      {
+        phi += 2 * M_PI;
+      }
+      last_phi = phi;
+
+      /* 构建参考轨迹 X_ref_ */
+      Eigen::VectorXd z_ref(6);
+      Eigen::Vector2d xy_ref = s_(s0);
+      z_ref << xy_ref(0), xy_ref(1), phi, v, 0.0, 0.0;
+      X_ref_.push_back(z_ref);
+
+      // 计算扩展后的 Ad_, Bd_（维度6x6和6x2）
+      linearization(phi, v, delta);
+
+      // 填充 BB 和 AA 矩阵
+      if (i == 0) 
+      {
+        BB.block(0, 0, n_extended, m) = Bd_;
+        AA.block(0, 0, n_extended, n_extended) = Ad_;
+        gg.block(0, 0, n_extended, 1) = gd_;
+      } 
+      else 
+      {
+        // 递归计算 BB 的块
+        BB.block(n_extended*i, m*i, n_extended, m) = Bd_;
+        for (int j = i-1; j >= 0; --j) 
+        {
+          BB.block(n_extended*i, m*j, n_extended, m) = 
+            Ad_ * BB.block(n_extended*(i-1), m*j, n_extended, m);
+        }
+        // 递归计算 AA 的块
+        AA.block(n_extended*i, 0, n_extended, n_extended) = 
+          Ad_ * AA.block(n_extended*(i-1), 0, n_extended, n_extended);
+        gg.block(n_extended * i, 0, n_extended, 1) = Ad_ * gg.block(n_extended*(i-1), 0, n_extended, 1) + gd_;
+      }
+    }
+
+    /*-----------------------------------------------
+    5. 二次规划问题构建（适配增量Δu）
+    ------------------------------------------------*/
+    // 状态方程：X = BB * ΔU + AA * x0_extended
+    Eigen::SparseMatrix<double> BB_sparse = BB.sparseView();
+    Eigen::SparseMatrix<double> AA_sparse = AA.sparseView();
+    Eigen::SparseMatrix<double> gg_sparse = gg.sparseView();
+    
+    // 目标函数：J = 0.5 * ΔU^T H ΔU + f^T ΔU
+    Eigen::SparseMatrix<double> H = BB_sparse.transpose() * Qx_ * BB_sparse + S_; // S_ 为 Δu 的权重矩阵 TODO:
+    Eigen::VectorXd f = BB_sparse.transpose() * Qx_ * (AA_sparse * x0_extended - X_ref_)
+                        +BB_sparse.transpose() * Qx_ * gg_sparse; // TODO:
+
+    // 输入幅值约束（通过历史输入和增量计算）
+    Eigen::VectorXd u_min = ...; // 根据 a_prev + ΣΔa 和 δ_prev + ΣΔδ 计算
+    Eigen::VectorXd u_max = ...;
+    
+    // 转换为 Δu 的约束
+    Eigen::VectorXd delta_u_min = ...;
+    Eigen::VectorXd delta_u_max = ...;
+
+    // 更新 QP 求解器参数
+    qpSolver_.setMats(H, f, A_constraints_, delta_u_min, delta_u_max);
+    qpSolver_.solve();
+
+    /*-----------------------------------------------
+    6. 结果解析与输入更新
+    ------------------------------------------------*/
+    Eigen::VectorXd delta_u_opt = qpSolver_.getPrimalSol();
+    Eigen::MatrixXd delta_u_sequence = Eigen::Map<const Eigen::MatrixXd>(delta_u_opt.data(), m, N_);
+
+    // 预测输入为增量序列
+    predictInput_.clear();
+    for (int i = 0; i < N_; ++i) 
+    {
+      predictInput_.push_back(delta_u_sequence.col(i));
+    }
+
+    return qpSolver_.getStatus();
   }
 
   void getPredictXU(double t, VectorX& state, VectorU& input) 

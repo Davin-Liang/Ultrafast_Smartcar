@@ -41,6 +41,12 @@
 #include "hybrid_astar.h"
 #include <tf/transform_datatypes.h>
 #include "visualize.h"
+
+#include <vector>                        // 标准库 vector
+#include <geometry_msgs/PoseStamped.h>   // geometry_msgs::PoseStamped
+#include <visualization_msgs/MarkerArray.h> // visualization_msgs::MarkerArray
+#include <cmath> 
+
 // #define SearchingVisulize
 // #define debug_mode
 namespace hybrid_astar_planner {
@@ -85,20 +91,32 @@ bool hybridAstar::calculatePath(
                       start.pose.position.y, start_x, start_y);
   //************************************************
   // 建立启发势场取决于地图大小,231(nodes/ms)
-  std::unordered_map<int, std::shared_ptr<Node2D>> dp_map = 
-      grid_a_star_heuristic_generator_->GenerateDpMap(goal_x, goal_y, costmap); //todo    
+  ros::Time t0 = ros::Time::now();
 
-  #ifdef debug_mode
+  static bool first_ = true;
+  static std::unordered_map<int, std::shared_ptr<Node2D>> dp_map;
+  if (first_ == true)
+  {
+    dp_map = grid_a_star_heuristic_generator_->GenerateDpMap(goal_x, goal_y, costmap); //todo 
+    first_ = false;
+  }
+       
+  static int i = 0;
+  std::cout << "i = " << i++ << std::endl;
+
+  // #ifdef debug_mode
   ros::Time end_time = ros::Time::now();
   ros::Time t1 = ros::Time::now();
   ros::Duration d(end_time - t0);
   std::cout << "generate heuristic map costed " << d * 1000 << " ms" <<std::endl;
-  #endif
+  // #endif
 
   t = tf::getYaw(goal.pose.orientation);
   Node3D* goalPose = new Node3D(goal.pose.position.x, goal.pose.position.y, t, 999, 0, false, nullptr);
   std::unordered_map<int, Node3D*> open_set;
   std::unordered_map<int, Node3D*> closed_set;
+
+  std::cout << "step = 1" << std::endl;
 
   int dir;
   if (reverse_) dir = 6;
@@ -112,17 +130,23 @@ bool hybridAstar::calculatePath(
   open_set.emplace(startPose->getindex(cells_x, heading_, resolution, dx, dy), startPose);
   openSet.push(startPose);
 
+  std::cout << "step = 2" << std::endl;
+
   Node3D* tmpNode;
   Node3D* nSucc;
   int counter = 0;
+
+  std::cout << "step = 3" << std::endl;
+
   while (openSet.size() && counter < iterations_) 
   {
+     std::cout << "step = 4" << std::endl;
     ++ counter;
     tmpNode = openSet.top(); // 根据混合A*算法，取堆顶的元素作为下查找节点
-
-    #ifdef SearchingVisulize
-    publishSearchNodes(*tmpNode, pub, AstarpathNodes, counter, deltaHeadingRad_);
-    #endif
+     std::cout << "step = 5" << std::endl;
+    // #ifdef SearchingVisulize
+    // publishSearchNodes(*tmpNode, pub, AstarpathNodes, counter, deltaHeadingRad_);
+    // #endif
 
     openSet.pop(); // 出栈
     if (reachGoal(tmpNode, goalPose)) 
@@ -132,7 +156,7 @@ bool hybridAstar::calculatePath(
       ros::Duration d(t1 - t0);
       std::cout << "got plan in ms: " << d * 1000 << std::endl;
       #endif
-
+      std::cout << "step = 4" << std::endl;
       ROS_INFO("Got a plan,loop %d times", counter);
       nodeToPlan(tmpNode, plan);
 
@@ -181,12 +205,18 @@ bool hybridAstar::calculatePath(
 
           ROS_INFO("Got a plan,expored %d nodes ", counter);
           nodeToPlan(nSucc, plan);
+
+          // if (astar_planner_ != nullptr)
+          //   delete astar_planner_;
+
           return true;//如果下一步是目标点，可以返回了
         }
       } 
       else if(reedsSheppShot_ && tmpNode->isInRange(*goalPose, dubinsShotDistance_) && !tmpNode->isReverse()) 
       {
+        std::cout << "step = 5" << std::endl;
         nSucc = reedsSheppShot(*tmpNode, *goalPose, costmap, turning_radius_, ReedsSheppStepSize_, deltaHeadingRad_);
+        std::cout << "step = 6" << std::endl;
         /* 如果Dubins方法能直接命中，即不需要进入Hybrid A*搜索了，直接返回结果 */
         if (nSucc != nullptr && reachGoal(nSucc, goalPose)) 
         {
@@ -210,6 +240,9 @@ bool hybridAstar::calculatePath(
             if (pair.second != nullptr)
               delete pair.second;
           }
+
+          // if (astar_planner_ != nullptr)
+          //   delete astar_planner_;
           // for (auto& pair : closed_set) 
           // {
           //   if (pair.second != nullptr)
@@ -229,6 +262,7 @@ bool hybridAstar::calculatePath(
       }
     }
 
+      std::cout << "step = 3" << std::endl;
     /* 拓展tmpNode临时点目标周围的点 */
     std::vector<Node3D*> adjacentNodes = gatAdjacentPoints(dir, cellsX, cellsY, charMap, tmpNode);   
     /* 将 tmpNode点在pathNode3D中映射的点加入闭集合中 */
@@ -267,12 +301,69 @@ bool hybridAstar::calculatePath(
         {
           dp_map_g_cost=dp_map[start_y * cellsX + start_x]->getG()/20;
         }
+
+        // std::vector<geometry_msgs::PoseStamped> plan_;
+        // visualization_msgs::MarkerArray AstarpathNodes;
+        // geometry_msgs::PoseStamped start;
+        // geometry_msgs::PoseStamped goal;
+        // Node3D* startPose = new Node3D(start.pose.position.x, start.pose.position.y, t, 0, 0, false, nullptr);
+        // start.pose.position.x = point->getX();
+        // start.pose.position.y = point->getY();
+        // goal.pose.position.x = goalPose->getX();
+        // goal.pose.position.y = goalPose->getY();
+
+        // astar_planner_->calculatePath(start, 
+        //                               goal, 
+        //                               costmap->getSizeInCellsX(), 
+        //                               costmap->getSizeInCellsY(), 
+        //                               plan_, 
+        //                               path_vehicles_pub_, 
+        //                               AstarpathNodes);
+
+        // double AtarLength = calculatePathLength(plan_)/20;
+
+        // for (unsigned int i = 0; i < int(plan_.size()); i++)
+        // {
+        //   result->x.emplace_back(plan_[i].pose.position.x);
+        //   result->y.emplace_back(plan_[i].pose.position.y);//todo
+        //   result->phi.emplace_back(tf::getYaw(plan_[i].pose.orientation));
+        // }
+
+        // updateH(*point, *goalPose, NULL, NULL, cells_x, cells_y, AtarLength, deltaHeadingRad_, reverse_);
         updateH(*point, *goalPose, NULL, NULL, cells_x, cells_y, dp_map_g_cost, deltaHeadingRad_, reverse_);
         openSet.push(point);    // 如果符合拓展点要求，则将此点加入优先队列中 
       }
     }
   }
   return false;
+}
+
+double hybridAstar::calculatePathLength(const std::vector<geometry_msgs::PoseStamped>& plan) {
+    double total_length = 0.0;
+
+    // 检查路径是否有效
+    if (plan.empty() || plan.size() < 2) {
+        return 0.0; // 空路径或只有一个点时长度为0
+    }
+
+    // 遍历相邻点对
+    for (size_t i = 0; i < plan.size() - 1; ++i) {
+        const auto& p1 = plan[i].pose.position;
+        const auto& p2 = plan[i + 1].pose.position;
+
+        // 计算两点间的欧氏距离（2D 或 3D）
+        double dx = p2.x - p1.x;
+        double dy = p2.y - p1.y;
+        // double dz = p2.z - p1.z;
+
+        // 累加距离（通常路径是平面运动，可以忽略 z）
+        total_length += sqrt(dx*dx + dy*dy);
+        
+        // 若忽略 z 轴，可简化为：
+        // total_length += sqrt(dx*dx + dy*dy);
+    }
+
+    return total_length;
 }
 
 std::vector<Node3D*> hybridAstar::gatAdjacentPoints(int dir, int cells_x, 
@@ -373,6 +464,7 @@ double hybridAstar::Mod2Pi(const double &x)
 /* 判断当前节点 node 是否在位置（X, Y）和方向（T）上足够接近目标节点 goalPose，从而判定是否到达目标 */
 bool hybridAstar::reachGoal(Node3D* node, Node3D* goalPose) 
 {
+  std::cout << "in" << std::endl;
   float nodeX = node->getX();
   float nodeY = node->getY();
   float goalX = goalPose->getX();
@@ -410,6 +502,7 @@ void hybridAstar::nodeToPlan(Node3D* node, std::vector<geometry_msgs::PoseStampe
   {
     tmpPose.pose.position.x = tmpPtr->getX();
     tmpPose.pose.position.y = tmpPtr->getY();
+    tmpPose.pose.position.z = tmpPtr->getT(deltaHeadingRad_);
     tmpPose.header.frame_id = frame_id_;
     tmpPose.pose.orientation = tf::createQuaternionMsgFromYaw(tmpPtr->getT(deltaHeadingRad_));
     replan.push_back(tmpPose);

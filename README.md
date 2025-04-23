@@ -110,7 +110,7 @@ roslaunch mpc_car simulation.launch
 6. 启动导航状态机
 
 ```
-
+rosrun map_server map_saver -f /home/stitch/test/test2_ws/src/Ultrafast_Smartcar/hybrid_astar_planner/test_the_plugin/maps/test1
 ```
 
 # 开源参考

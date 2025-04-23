@@ -61,10 +61,10 @@ namespace opt_planner
   Eigen::Vector3d UniformBspline::evaluateDeBoor(const double &u)
   {
 
-    double ub = min(max(u_(p_), u), u_(m_ - p_));
+    double ub = min(max(u_(p_), u), u_(m_ - p_)); // 取节点中间段为有效段
 
     // determine which [ui,ui+1] lay in
-    int k = p_;
+    int k = p_; // 从阶数值的节点开始
     while (true)
     {
       if (u_(k + 1) >= ub)
@@ -72,12 +72,13 @@ namespace opt_planner
       ++k;
     }
 
+    /* 通过k找到与当前节点相关的控制点是k-p_到k */
     /* deBoor's alg */
+    // 提取与当前区间相关的 p+1 个控制点
     vector<Eigen::Vector3d> d;
     for (int i = 0; i <= p_; ++i)
     {
       d.push_back(control_points_.col(k - p_ + i));
-      // cout << d[i].transpose() << endl;
     }
 
     for (int r = 1; r <= p_; ++r)

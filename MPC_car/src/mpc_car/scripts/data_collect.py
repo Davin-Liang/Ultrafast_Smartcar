@@ -67,7 +67,7 @@ class TrajectoryRecorder:
 
         if goal_mode in [0, 2]:
             rospy.sleep(1.0)
-            if 1 == goal_mode:
+            if 0 == goal_mode:
                 self.publish_previous_goal()
             if goal_mode == 2:
                 self.publish_path_from_csv()

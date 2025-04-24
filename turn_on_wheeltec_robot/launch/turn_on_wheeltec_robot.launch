@@ -15,8 +15,8 @@
   </include>
 
   <!-- 启动雷达 -->
-  <include file="$(find lslidar_driver)/launch/lslidar_serial.launch">
-  </include>
+  <!-- <include file="$(find lslidar_driver)/launch/lslidar_serial.launch">
+  </include> -->
 
   <!-- 启动IMU -->
   <include file="$(find fdilink_ahrs)/launch/ahrs_data.launch">

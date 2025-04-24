@@ -309,7 +309,7 @@ class Nodelet : public nodelet::Nodelet
     tracking_status_pub_ = nh.advertise<std_msgs::Int32>("/tracking_status", 1);
     /* 订阅全局路径 */
     // ros::TransportHints().tcpNoDelay() 的作用是通过禁用 TCP 的 Nagle 算法来减少网络通信的延迟，从而提高实时性能
-    path_sub_ = nh.subscribe<nav_msgs::Path>("/move_base/HybridAStarPlanner/plan_bspline", 
+    path_sub_ = nh.subscribe<nav_msgs::Path>("/move_base/HybridAStarPlanner/plan", 
                                               1, 
                                               &Nodelet::path_callback, 
                                               this, 

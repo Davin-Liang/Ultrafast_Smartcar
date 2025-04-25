@@ -5,7 +5,7 @@
   <!--坐标变换，需要实测 -->
   <!--阿克曼系列 -->
    <!-- 用于雷达节点，后面同理不再赘述-->
-   <node pkg="tf" type="static_transform_publisher" name="base_to_laser" args="0 0.00 0.15 0 0 0  base_footprint laser 100" />
+   <node pkg="tf" type="static_transform_publisher" name="base_to_laser" args="-0.07 0.00 0.165 0 0 0  base_footprint laser 100" />
    <!-- 用于摄像头相关节点，如3d建图导航，后面同理不再赘述-->
    <node pkg="tf" type="static_transform_publisher" name="base_to_camera" args="0.185 0.00 0.1 0 0 0   base_footprint camera_link 100" />
    <!-- 用于robot_pose_ekf节点，后面同理不再赘述-->

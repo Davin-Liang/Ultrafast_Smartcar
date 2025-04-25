@@ -144,7 +144,7 @@ class MpcCar {
       // std::cout << "s_.arcL() - s0 = " << s_.arcL() - s0 << std::endl;
       // std::cout << "s_.arcL() - s0 = " << s_.arcL() - s0 << std::endl;
       // std::cout << "s_.arcL() - s0 = " << s_.arcL() - s0 << std::endl;
-      if (s_.arcL() - s0 > 1.0)
+      if (s_.arcL() - s0 > 1.5)
       {
         v = desired_v_;
         delta = atan2(ll_ * dphi / (v), 1.0);// ERROR?这里不是应该再除以一个v吗？
@@ -153,7 +153,7 @@ class MpcCar {
       }
       else
       {
-        v = (s_.arcL() - s0) / 1.0 * desired_v_;
+        v = (s_.arcL() - s0) / 1.5 * desired_v_;
         delta = atan2(ll_ * dphi / (v) , 1.0);
       }
       
@@ -269,14 +269,14 @@ class MpcCar {
     Qx_.setIdentity(); // 初始化为对角矩阵
     for (int i = 1; i < N_; ++i) // 设置每一个小矩阵
     {
-      Qx_.coeffRef(i * n - 4, i * n - 4) = 8;
-      Qx_.coeffRef(i * n - 3, i * n - 3) = 8;
+      Qx_.coeffRef(i * n - 4, i * n - 4) = 10;
+      Qx_.coeffRef(i * n - 3, i * n - 3) = 10;
       Qx_.coeffRef(i * n - 2, i * n - 2) = rho_;
       Qx_.coeffRef(i * n - 1, i * n - 1) = 4;
     }
     //这下面是设置 Qx_(Q) 里面的右下角的小矩阵
-    Qx_.coeffRef(N_ * n - 4, N_ * n - 4) = rhoN_;
-    Qx_.coeffRef(N_ * n - 3, N_ * n - 3) = rhoN_;
+    Qx_.coeffRef(N_ * n - 4, N_ * n - 4) = rhoN_*2;
+    Qx_.coeffRef(N_ * n - 3, N_ * n - 3) = rhoN_*2;
     Qx_.coeffRef(N_ * n - 2, N_ * n - 2) = 100; // rhoN_ * rho_
     
     int n_cons = 4;  // [v a delta ddelta]，约束的维度。对每一个预测周期都需要约束
@@ -365,7 +365,7 @@ class MpcCar {
     /* TODO: 在这里设置目标完成情况的参数的阈值 */
     if ((dx * dx + dy * dy) < 0.3 && 
         std::abs(v_norm) < 0.01 && 
-        std::abs(phi - yaw) < 0.5) 
+        std::abs(phi - yaw) < 0.6) 
       return true;
 
     return false;

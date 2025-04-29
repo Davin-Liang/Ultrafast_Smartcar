@@ -208,7 +208,7 @@ class Nodelet : public nodelet::Nodelet
     geometry_msgs::PointStamped base_point;
     base_point.header.frame_id = "base_link";
     base_point.header.stamp = msg->header.stamp;
-    base_point.point.x = -0.065;
+    base_point.point.x = -0.0841;
     base_point.point.y = 0;
     base_point.point.z = 0;
 

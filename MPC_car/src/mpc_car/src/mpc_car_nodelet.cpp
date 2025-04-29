@@ -58,6 +58,8 @@ class Nodelet : public nodelet::Nodelet
   double delay_ = 0.0;
   int path_seg_index = 0;//当前跟踪的seg的编号
 
+  double dt = 0;
+
   std::vector<std::vector<Eigen::Vector2d>> path_segs;
   std::vector<int> path_direction;
 
@@ -179,12 +181,12 @@ class Nodelet : public nodelet::Nodelet
 
       geometry_msgs::Twist msg;
       if (path_direction[path_seg_index] > 0)
-        msg.linear.x = pre_state_(3) + u(0) * 0.04;
+        msg.linear.x = pre_state_(3) + u(0) * dt;
       else
       {
-        std::cout << "state_(3) = " << state_(3) << std::endl;
+        // std::cout << "state_(3) = " << state_(3) << std::endl;
         // msg.linear.x = -abs(state_(3) + u(0) * 0.03);
-        msg.linear.x = pre_state_(3) + u(0) * 0.04;
+        msg.linear.x = pre_state_(3) + u(0) * dt;
 
       }
 
@@ -281,7 +283,7 @@ class Nodelet : public nodelet::Nodelet
   {
     ros::NodeHandle nh(getMTPrivateNodeHandle());
     mpcPtr_ = std::make_shared<MpcCar>(nh);
-    double dt = 0;
+    // double dt = 0;
     nh.getParam("dt", dt);
     nh.getParam("delay", delay_);
 

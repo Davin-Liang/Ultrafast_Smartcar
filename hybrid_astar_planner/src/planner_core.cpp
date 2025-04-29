@@ -234,6 +234,7 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
   /* -------------------------------------------B 样条优化------------------------------------------- */
   /* ----------------------------------------------------------------------------------------------- */
   // double total_opt_time = 0.0;
+  Timer time_bef_optimization;
   vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> BSplineSmooth_set;
   for (int i = 0; i < int(partition_trajectories.size()); ++i)
   {
@@ -268,11 +269,11 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
     // publishPathFromCtrlPts(ctrl_pts);
     bspline_optimizer_rebound_->initControlPoints(ctrl_pts, true);
 
-    Timer time_bef_optimization;
+    // Timer time_bef_optimization;
     /* B样条曲线优化 */
     bool optimization_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts, corridors[i]);
     // publishPathFromCtrlPts(ctrl_pts);
-    std::cout << "Time consume in optimization is: " << time_bef_optimization.End() <<" ms"<< std::endl;
+    // std::cout << "Time consume in optimization is: " << time_bef_optimization.End() <<" ms"<< std::endl;
 
     if (!optimization_success)
     {
@@ -290,6 +291,7 @@ bool HybridAStarPlanner::makePlan(const geometry_msgs::PoseStamped &start,
       BSplineSmooth_set.emplace_back(pt); // 得到优化后的路径
     }
   }
+  std::cout << "Time consume in optimization is: " << time_bef_optimization.End() <<" ms"<< std::endl;
   std::cout << "成功优化所有路径样本路径！" << std::endl;
   
   double b_spline_length = 0;
@@ -963,7 +965,7 @@ void HybridAStarPlanner::publishPlan_bspline(const vector<Eigen::Vector3d, Eigen
   {
     const auto &pose= path[index];
     double head_angle = path[index].z();
-    std::cout << "path[index].z = " << head_angle << std::endl;
+    // std::cout << "path[index].z = " << head_angle << std::endl;
     double tracking_angle;
     if (index + 1 < path.size()) 
     {

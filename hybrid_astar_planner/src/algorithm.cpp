@@ -91,14 +91,14 @@ void  updateH(Node3D& start, const Node3D& goal, Node2D* nodes2D,
   // {
   //   //reeds_shepp算法还还存在问题，启用可能会造成搜寻路径增加等问题
 
-    ompl::base::ReedsSheppStateSpace reedsSheppPath(Constants::r);
-    State* rsStart = (State*)reedsSheppPath.allocState();
-    State* rsEnd = (State*)reedsSheppPath.allocState();
-    rsStart->setXY(start.getX(), start.getY());
-    rsStart->setYaw(start.getT(deltaHeadingRad));
-    rsEnd->setXY(goal.getX(), goal.getY());
-    rsEnd->setYaw(goal.getT(deltaHeadingRad));
-    reedsSheppCost = reedsSheppPath.distance(rsStart, rsEnd) * 1.1 + 0.04 * start.getCost();
+    // ompl::base::ReedsSheppStateSpace reedsSheppPath(Constants::r);
+    // State* rsStart = (State*)reedsSheppPath.allocState();
+    // State* rsEnd = (State*)reedsSheppPath.allocState();
+    // rsStart->setXY(start.getX(), start.getY());
+    // rsStart->setYaw(start.getT(deltaHeadingRad));
+    // rsEnd->setXY(goal.getX(), goal.getY());
+    // rsEnd->setYaw(goal.getT(deltaHeadingRad));
+    // reedsSheppCost = reedsSheppPath.distance(rsStart, rsEnd) * 1.1 + 0.04 * start.getCost();
 
     // double dx = goal.getX() - start.getX();
     // double dy = start.getY() - start.getY();
@@ -109,9 +109,9 @@ void  updateH(Node3D& start, const Node3D& goal, Node2D* nodes2D,
 
   // }
   // #endif
-  start.setH(std::max(reedsSheppCost, inspireAstar));//将两个代价中的最大值作为启发式值
+  // start.setH(std::max(reedsSheppCost, inspireAstar));//将两个代价中的最大值作为启发式值
   // start.setH(reedsSheppCost);
-  // start.setH(inspireAstar);
+  start.setH(inspireAstar);
 }
 
 

@@ -116,7 +116,7 @@ bool hybridAstar::calculatePath(
   std::unordered_map<int, Node3D*> open_set;
   std::unordered_map<int, Node3D*> closed_set;
 
-  std::cout << "step = 1" << std::endl;
+  // std::cout << "step = 1" << std::endl;
 
   int dir;
   if (reverse_) dir = 6;
@@ -130,20 +130,20 @@ bool hybridAstar::calculatePath(
   open_set.emplace(startPose->getindex(cells_x, heading_, resolution, dx, dy), startPose);
   openSet.push(startPose);
 
-  std::cout << "step = 2" << std::endl;
+  // std::cout << "step = 2" << std::endl;
 
   Node3D* tmpNode;
   Node3D* nSucc;
   int counter = 0;
 
-  std::cout << "step = 3" << std::endl;
+  // std::cout << "step = 3" << std::endl;
 
   while (openSet.size() && counter < iterations_) 
   {
-     std::cout << "step = 4" << std::endl;
+    //  std::cout << "step = 4" << std::endl;
     ++ counter;
     tmpNode = openSet.top(); // 根据混合A*算法，取堆顶的元素作为下查找节点
-     std::cout << "step = 5" << std::endl;
+    //  std::cout << "step = 5" << std::endl;
     // #ifdef SearchingVisulize
     // publishSearchNodes(*tmpNode, pub, AstarpathNodes, counter, deltaHeadingRad_);
     // #endif
@@ -214,9 +214,9 @@ bool hybridAstar::calculatePath(
       } 
       else if(reedsSheppShot_ && tmpNode->isInRange(*goalPose, dubinsShotDistance_) && !tmpNode->isReverse()) 
       {
-        std::cout << "step = 5" << std::endl;
+        // std::cout << "step = 5" << std::endl;
         nSucc = reedsSheppShot(*tmpNode, *goalPose, costmap, turning_radius_, ReedsSheppStepSize_, deltaHeadingRad_);
-        std::cout << "step = 6" << std::endl;
+        // std::cout << "step = 6" << std::endl;
         /* 如果Dubins方法能直接命中，即不需要进入Hybrid A*搜索了，直接返回结果 */
         if (nSucc != nullptr && reachGoal(nSucc, goalPose)) 
         {
@@ -262,7 +262,7 @@ bool hybridAstar::calculatePath(
       }
     }
 
-      std::cout << "step = 3" << std::endl;
+      // std::cout << "step = 3" << std::endl;
     /* 拓展tmpNode临时点目标周围的点 */
     std::vector<Node3D*> adjacentNodes = gatAdjacentPoints(dir, cellsX, cellsY, charMap, tmpNode);   
     /* 将 tmpNode点在pathNode3D中映射的点加入闭集合中 */
@@ -464,7 +464,7 @@ double hybridAstar::Mod2Pi(const double &x)
 /* 判断当前节点 node 是否在位置（X, Y）和方向（T）上足够接近目标节点 goalPose，从而判定是否到达目标 */
 bool hybridAstar::reachGoal(Node3D* node, Node3D* goalPose) 
 {
-  std::cout << "in" << std::endl;
+  // std::cout << "in" << std::endl;
   float nodeX = node->getX();
   float nodeY = node->getY();
   float goalX = goalPose->getX();

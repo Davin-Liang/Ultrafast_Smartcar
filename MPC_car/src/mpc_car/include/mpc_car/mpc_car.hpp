@@ -153,8 +153,8 @@ class MpcCar {
       }
       else
       {
-        v = (s_.arcL() - s0) / 2.0 * desired_v_;
-        delta = atan2(ll_ * dphi / (v) , 1.0);
+        v = (s_.arcL() - s0) / 2.0 * desired_v_ * 0.5;
+        delta = atan2(ll_ * dphi / (desired_v_*1.5) , 1.0);
       }
       
     }
@@ -356,7 +356,7 @@ class MpcCar {
     else if (phi - yaw < -M_PI)
       phi += 2 * M_PI;
     
-    std::cout << "4" << std::endl;
+    // std::cout << "4" << std::endl;
 
     Eigen::Vector2d gxy = s_(s_.arcL(), 0); // 提取路径上的目标点位置
     double dx = gxy.x() - x;

@@ -915,12 +915,12 @@ namespace opt_planner
       lbfgs::lbfgs_parameter_t lbfgs_params;
       lbfgs::lbfgs_load_default_parameters(&lbfgs_params);
       lbfgs_params.mem_size = 16; // 优化器使用的内存大小
-      lbfgs_params.max_iterations = 1000; //  最大迭代次数
+      lbfgs_params.max_iterations = 200; //  最大迭代次数
       lbfgs_params.g_epsilon = 0.01; // 梯度收敛阈值
-      lbfgs_params.past = 3; // 提前终止条件的历史窗口大小
-      lbfgs_params.min_step = 1e-32; // 最小步长
-      lbfgs_params.delta = 1e-6; // 提前终止的目标变化阈值
-      lbfgs_params.line_search_type = 0;
+      // lbfgs_params.past = 3; // 提前终止条件的历史窗口大小
+      // lbfgs_params.min_step = 1e-20; // 最小步长
+      // lbfgs_params.delta = 1e-6; // 提前终止的目标变化阈值
+      // lbfgs_params.line_search_type = 0;
 
       
       /* ---------- optimize ---------- */

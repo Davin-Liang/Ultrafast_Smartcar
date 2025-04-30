@@ -15,7 +15,7 @@ desired_v: 0.5 # desired velocity
 ll: 0.17 # ll of the car//，车的长度
 dt: 0.1 # 
 rho: 10.0 # J = (x-x_r)^2+ (y-y_r)^2 + rho * (phi-phi_r)^2 //过程cost的权重
-N: 50 # horizon
+N: 45 # horizon
 rhoN: 4.0 #终端状态的权重？
 
 # lower and upper bound

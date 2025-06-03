@@ -1,13 +1,19 @@
 # Ultrafast Smartcar
 
-## Enviroment Requirement
+## 环境需要
 
 * Noetic
+* Ubuntu20.04
 
+## 硬件组成
 
-## Deployment Procedure
+* 地平线智能车
+* IMU
+* 雷达
 
-1. Install dependancy.
+## 部署步骤
+
+1. 安装基础依赖
 
 ```
 sudo apt-get install libpcap-dev
@@ -15,7 +21,7 @@ sudo apt-get install liborocos-bfl-dev
 sudo apt install libgoogle-glog-dev
 ```
 
-2. Install Osqp.
+2. 安装OSQP求解库
 
 ```
 cd MPC_car/osqp
@@ -26,7 +32,7 @@ cmake --build .
 sudo cmake --build . --target install
 ```
 
-3. Conpile related feature packages.
+3. 编译
 
 ```
 catkin_make -DCATKIN_WHITELIST_PACKAGES=lslidar_msgs
@@ -37,9 +43,11 @@ catkin_make -DCATKIN_WHITELIST_PACKAGES=hybrid_astar_planner
 
 ## Action Procedure
 
-### 在虚拟机器人上使用
+### 在虚拟环境上使用
 
-1. 启动 gazebo 仿真
+#### 建图
+
+1. 启动 gazebo 仿真（同时也会启动键盘控制）
 
 ```
 roslaunch racebot_gazebo tianracer.launch
@@ -51,33 +59,38 @@ roslaunch racebot_gazebo tianracer.launch
 roslaunch turn_on_wheeltec_robot robot_pose_ekf.launch
 ```
 
-3. 启动自定义全局规划器
-
-```
-roslaunch hybrid_astar_planner test.launch
-```
-
-4. 启动MPC轨迹跟踪
-
-```
-roslaunch mpc_car simulation.launch
-```
-
-5. 启动导航状态机
-
-```
-
-```
-
-6. 启动SLAM建图
+3. 启动 SLAM 建图
 
 ```
 roslaunch racebot_gazebo slam_gmapping.launch
 ```
 
-### 在实际机器人上使用
+4. 建完图后，保存地图
 
-1. 启动阿克曼小车
+```
+rosrun map_server map_saver -f /home/stitch/test/test2_ws/src/Ultrafast_Smartcar/hybrid_astar_planner/test_the_plugin/maps/<地图名称>
+```
+
+#### 导航
+
+1. 启动 gazebo 仿真
+
+```
+roslaunch racebot_gazebo tianracer.launch
+```
+
+2. 启动自定义导航框架
+
+```
+roslaunch ufs_state_machine ufs_simulation.launch
+```
+
+### 在实际环境上使用
+
+#### 建图
+
+1. 启动小车
+   需要提前为IMU模块、雷达模块上电。
 
 ```
 roslaunch turn_on_wheeltec_robot turn_on_wheeltec_robot.launch
@@ -89,28 +102,35 @@ roslaunch turn_on_wheeltec_robot turn_on_wheeltec_robot.launch
 roslaunch wheeltec_robot_rc keyboard_teleop.launch
 ```
 
-3. 启动SLAM建图
+3. 启动 SLAM 建图
 
 ```
 roslaunch turn_on_wheeltec_robot slam_gmapping.launch
 ```
 
-4. 启动自定义全局规划器
+4. 在 PC 端启动 rviz，添加相应插件
+   注意点：
+
+* 小车需和 PC 做好主从机连接
+
+5. 建完图后，保存地图
 
 ```
-roslaunch hybrid_astar_planner test.launch
+rosrun map_server map_saver -f /home/stitch/test/test2_ws/src/Ultrafast_Smartcar/hybrid_astar_planner/test_the_plugin/maps/<地图名称>
 ```
 
-5. 启动MPC轨迹跟踪
+#### 导航
+
+1. 启动小车
 
 ```
-roslaunch mpc_car simulation.launch
+roslaunch turn_on_wheeltec_robot turn_on_wheeltec_robot.launch
 ```
 
-6. 启动导航状态机
+2. 启动自定义导航框架
 
 ```
-rosrun map_server map_saver -f /home/stitch/test/test2_ws/src/Ultrafast_Smartcar/hybrid_astar_planner/test_the_plugin/maps/test1
+roslaunch ufs_state_machine ufs_realization.launch
 ```
 
 # 开源参考

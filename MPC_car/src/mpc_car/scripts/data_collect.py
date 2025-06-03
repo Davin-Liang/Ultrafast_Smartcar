@@ -22,8 +22,8 @@ class TrajectoryRecorder:
 
         self.path_info = {
             "hybrid": {
-                "topic": "/move_base/HybridAStarPlanner/plan",
-                "path_file": "planned_path.csv"
+                "topic": "/move_base/HybridAStarPlanner/plan_bspline",
+                "path_file": "bspline_path.csv"
             },
             "bspline": {
                 "topic": "/move_base/HybridAStarPlanner/plan_bspline",

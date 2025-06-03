@@ -154,7 +154,7 @@ class MpcCar {
       else
       {
         v = (s_.arcL() - s0) / 2.0 * desired_v_ * 0.5;
-        delta = atan2(ll_ * dphi / (desired_v_*1.5) , 1.0);
+        delta = atan2(ll_ * dphi / (desired_v_) , 1.0);
       }
       
     }
@@ -364,9 +364,9 @@ class MpcCar {
     std::cout << "dxy: " <<  (dx * dx + dy * dy) << ", v: " << std::abs(v_norm);
     std::cout << ", std::abs(phi - x0(2)): " << std::abs(phi - yaw) << std::endl;
     /* TODO: 在这里设置目标完成情况的参数的阈值 */
-    if ((dx * dx + dy * dy) < 0.3 && 
-        std::abs(v_norm) < 0.01 && 
-        std::abs(phi - yaw) < 0.6) 
+    if ((dx * dx + dy * dy) < 0.15 && 
+        std::abs(v_norm) < 0.3 &&
+        std::abs(phi - yaw) < 0.6 )  // std::abs(phi - yaw) < 0.6
       return true;
 
     return false;

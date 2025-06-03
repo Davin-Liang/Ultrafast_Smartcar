@@ -21,7 +21,8 @@
         	<arg name="paused" value="$(arg paused)"/>
         	<arg name="use_sim_time" value="$(arg use_sim_time)"/>
         	<arg name="headless" value="$(arg headless)"/>
-	        <arg name="world_name" value="$(find racebot_gazebo)/worlds/warehouse.world"/>
+	        <arg name="world_name" value="$(find hybrid_astar_planner)/test_the_plugin/world/gf_simulation_test13.world"/>
+          <!-- <arg name="world_name" value="$(find racebot_gazebo)/worlds/warehouse.world"/> -->
                <!-- .world文件的地址-->
     	</include>
 

@@ -11,8 +11,8 @@
   </include>
 
   <!-- 启动 robot_pose_tf 定位 -->
-  <include file="$(find turn_on_wheeltec_robot)/launch/include/robot_pose_ekf.launch">
-  </include>
+  <!-- <include file="$(find turn_on_wheeltec_robot)/launch/include/robot_pose_ekf.launch"> 
+  </include> -->
 
   <!-- 启动雷达 -->
   <!-- <include file="$(find lslidar_driver)/launch/lslidar_serial.launch">

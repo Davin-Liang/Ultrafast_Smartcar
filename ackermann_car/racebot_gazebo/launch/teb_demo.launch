@@ -4,7 +4,7 @@
     <!-- <include file="$(find racebot_gazebo)/launch/racebot.launch"/> -->
 
     <!-- 设置地图的配置文件 -->
-    <arg name="map" default="gf_simulation_map_test2.yaml" />
+    <arg name="map" default="gf_map_full3.yaml" />
 
     <!-- 运行地图服务器，并且加载设置的地图-->
     <node name="map_server" pkg="map_server" type="map_server" args="$(find hybrid_astar_planner)/test_the_plugin/maps/$(arg map)"/>

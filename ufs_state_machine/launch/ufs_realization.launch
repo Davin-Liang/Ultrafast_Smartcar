@@ -5,8 +5,8 @@
   <include file="$(find hybrid_astar_planner)/test_the_plugin/launch/test_real.launch">
   </include>
 
-  <!-- <include file="$(find ufs_state_machine)/launch/state_machine.launch">
-  </include> -->
+  <include file="$(find ufs_state_machine)/launch/state_machine.launch">
+  </include> 
 
   <include file="$(find mpc_car)/launch/simulation.launch">
   </include>
